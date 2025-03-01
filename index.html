@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Space Battle Game</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+    <!-- Utils first to ensure they're available -->
+    <script src="app/utils/helpers.js"></script>
+    <script src="app/utils/border.js"></script>
+    <!-- Core -->
+    <script src="app/core/storage.js"></script>
+    <script src="app/core/input.js"></script>
+    <script src="app/core/game.js"></script>
+    <!-- Entities -->
+    <script src="app/entities/spaceship.js"></script>
+    <script src="app/entities/bullet.js"></script>
+    <script src="app/entities/planet.js"></script>
+    <script src="app/entities/ufo.js"></script>
+    <!-- UI -->
+    <script src="app/ui/hud.js"></script>
+    <script src="app/ui/screens.js"></script>
+    <script src="app/ui/startScreen.js"></script>
+    <!-- Main -->
+    <script src="app/main.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #333; /* Dark gray background for the border */
+        }
+        canvas {
+            display: block;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.5); /* Add shadow to canvas */
+        }
+    </style>
+</head>
+<body>
+</body>
+</html> 
