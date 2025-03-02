@@ -6,7 +6,8 @@ class Game {
     this.enemies = [];
     this.bullets = [];
     this.stars = [];
-    this.backgroundUFOs = []; // Renamed to backgroundUFOs to clarify they're decorative
+    this.backgroundUFOs = []; // Decorative UFOs
+    this.planets = []; // Background planets
     this.score = 0;
     this.lives = 3; // Start with 3 lives
     this.gameOver = false;
@@ -22,6 +23,7 @@ class Game {
     this.level = 1;
     this.enemySpawnRate = 0.02;
     this.backgroundUFOSpawnRate = 0.003; // Reduced spawn rate for background UFOs
+    this.planetSpawnRate = 0.0005; // Very low spawn rate for planets
     
     // Touch control variables
     this.touchActive = false;
@@ -46,6 +48,9 @@ class Game {
     
     // Initialize some background UFOs
     this.initializeBackgroundUFOs();
+    
+    // Initialize some planets
+    this.initializePlanets();
     
     // Initialize the game
     this.init();
@@ -265,6 +270,17 @@ class Game {
       }
     }
     
+    // Update planets (purely decorative)
+    for (let i = this.planets.length - 1; i >= 0; i--) {
+      const planet = this.planets[i];
+      const isActive = planet.update();
+      
+      // Remove planets that have gone off screen
+      if (!isActive) {
+        this.planets.splice(i, 1);
+      }
+    }
+    
     // Spawn enemies
     if (random() < this.enemySpawnRate) {
       this.spawnEnemy();
@@ -273,6 +289,11 @@ class Game {
     // Spawn background UFOs (decorative)
     if (random() < this.backgroundUFOSpawnRate) {
       this.spawnBackgroundUFO();
+    }
+    
+    // Spawn planets (decorative, very rare)
+    if (random() < this.planetSpawnRate) {
+      this.spawnPlanet();
     }
     
     // Increase difficulty over time
@@ -293,6 +314,11 @@ class Game {
       fill(star.brightness);
       noStroke();
       ellipse(star.x, star.y, star.size, star.size);
+    }
+    
+    // Draw planets (behind UFOs)
+    for (const planet of this.planets) {
+      planet.display();
     }
     
     // Draw background UFOs (behind everything else)
@@ -1279,6 +1305,134 @@ class Game {
     for (let i = 0; i < 2; i++) {
       this.spawnBackgroundUFO();
     }
+  }
+
+  /**
+   * Initialize some planets
+   */
+  initializePlanets() {
+    // Start with 2-3 planets in the background
+    const numPlanets = floor(random(2, 4));
+    for (let i = 0; i < numPlanets; i++) {
+      this.spawnPlanet();
+    }
+  }
+
+  /**
+   * Spawn a planet in the background
+   */
+  spawnPlanet() {
+    // Create a planet with random properties
+    const planetTypes = [
+      { name: 'rocky', colors: [[139, 69, 19], [160, 82, 45], [205, 133, 63]] }, // Brown rocky planet
+      { name: 'gas', colors: [[255, 140, 0], [255, 165, 0], [255, 215, 0]] },    // Orange/yellow gas giant
+      { name: 'ice', colors: [[135, 206, 235], [135, 206, 250], [176, 224, 230]] }, // Blue ice planet
+      { name: 'earth', colors: [[0, 128, 0], [65, 105, 225], [245, 245, 245]] },  // Earth-like
+      { name: 'lava', colors: [[178, 34, 34], [220, 20, 60], [255, 69, 0]] }      // Red/orange lava planet
+    ];
+    
+    const selectedType = random(planetTypes);
+    const size = random(80, 200); // Larger than stars but not too dominant
+    const x = random(-size/2, width + size/2);
+    const y = random(-size/2, height/2); // Only in top half of screen
+    const speedY = random(0.05, 0.2); // Very slow movement
+    const rotationSpeed = random(-0.01, 0.01);
+    const hasRings = random() > 0.7; // 30% chance of having rings
+    
+    const planet = {
+      x: x,
+      y: y,
+      size: size,
+      type: selectedType.name,
+      colors: selectedType.colors,
+      speedY: speedY,
+      rotation: random(TWO_PI),
+      rotationSpeed: rotationSpeed,
+      hasRings: hasRings,
+      ringColor: [random(150, 255), random(150, 255), random(150, 255)],
+      ringWidth: random(1.4, 2.0), // Ring width multiplier
+      features: [],
+      
+      // Generate random surface features
+      generateFeatures: function() {
+        const numFeatures = floor(random(3, 8));
+        for (let i = 0; i < numFeatures; i++) {
+          this.features.push({
+            angle: random(TWO_PI),
+            distance: random(0.3, 0.9) * (this.size/2),
+            size: random(0.05, 0.2) * this.size,
+            color: this.colors[floor(random(this.colors.length))]
+          });
+        }
+      },
+      
+      update: function() {
+        // Move very slowly down
+        this.y += this.speedY;
+        
+        // Rotate slowly
+        this.rotation += this.rotationSpeed;
+        
+        // Remove if completely off screen
+        if (this.y - this.size > height) {
+          return false;
+        }
+        return true;
+      },
+      
+      display: function() {
+        push();
+        
+        // Draw rings first (if planet has them) so they appear behind the planet
+        if (this.hasRings) {
+          push();
+          translate(this.x, this.y);
+          rotate(this.rotation);
+          
+          // Ring
+          noFill();
+          strokeWeight(this.size * 0.05);
+          stroke(this.ringColor[0], this.ringColor[1], this.ringColor[2], 150);
+          
+          // Draw elliptical rings
+          ellipse(0, 0, this.size * this.ringWidth, this.size * 0.4);
+          
+          pop();
+        }
+        
+        // Planet body
+        noStroke();
+        
+        // Base planet color (first color in the array)
+        fill(this.colors[0][0], this.colors[0][1], this.colors[0][2]);
+        ellipse(this.x, this.y, this.size, this.size);
+        
+        // Draw surface features
+        push();
+        translate(this.x, this.y);
+        rotate(this.rotation);
+        
+        for (const feature of this.features) {
+          fill(feature.color[0], feature.color[1], feature.color[2]);
+          const featureX = cos(feature.angle) * feature.distance;
+          const featureY = sin(feature.angle) * feature.distance;
+          ellipse(featureX, featureY, feature.size, feature.size);
+        }
+        
+        pop();
+        
+        // Add subtle glow effect
+        drawingContext.shadowBlur = 20;
+        drawingContext.shadowColor = `rgba(${this.colors[0][0]}, ${this.colors[0][1]}, ${this.colors[0][2]}, 0.3)`;
+        
+        pop();
+      }
+    };
+    
+    // Generate surface features
+    planet.generateFeatures();
+    
+    this.planets.push(planet);
   }
 }
 
