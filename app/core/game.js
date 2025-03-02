@@ -12,12 +12,25 @@ class Game {
     this.gameStarted = false;
     this.playerColor = [0, 255, 0]; // Default color
     this.highScores = [];
-    this.MAX_HIGH_SCORES = 5;
+    this.MAX_HIGH_SCORES = 5; // Keep storing 5 scores, but only display top 3
     this.playerName = "";
     this.enteringName = false;
     this.justEnded = false;
     this.level = 1;
     this.enemySpawnRate = 0.02;
+    
+    // Touch control variables
+    this.touchActive = false;
+    this.touchX = 0;
+    this.touchY = 0;
+    this.lastTouchTime = 0;
+    this.touchFireThreshold = 300; // ms between shots
+    this.virtualJoystickRadius = 50;
+    this.joystickActive = false;
+    this.joystickBaseX = 0;
+    this.joystickBaseY = 0;
+    this.joystickX = 0;
+    this.joystickY = 0;
     
     // Initialize the game
     this.init();
@@ -280,7 +293,7 @@ class Game {
     
     // Game over panel
     const panelWidth = 500;
-    const panelHeight = 500;
+    const panelHeight = 500; // Reduced height since we're showing fewer scores
     const panelX = width/2;
     const panelY = height/2;
     
@@ -334,13 +347,13 @@ class Game {
       fill(0, 255, 0);
       textSize(24);
       textAlign(CENTER);
-      text("HIGH SCORES", panelX, panelY - 50);
+      text("TOP SCORES", panelX, panelY - 50);
       
-      // High scores list
+      // High scores list - only top 3
       textSize(20);
-      for (let i = 0; i < Math.min(this.highScores.length, 5); i++) {
+      for (let i = 0; i < Math.min(this.highScores.length, 3); i++) {
         const score = this.highScores[i];
-        const yPos = panelY + (i * 40);
+        const yPos = panelY + i * 40;
         
         // Highlight the player's new score
         if (this.justEnded && score.name === this.playerName && score.score === this.score) {
@@ -367,9 +380,6 @@ class Game {
           textSize(24);
           text("🥉", panelX - 130, yPos);
           textSize(20);
-        } else {
-          // Regular number for other positions
-          text(`${i + 1}.`, panelX - 120, yPos);
         }
         
         text(score.name, panelX - 80, yPos);
@@ -378,24 +388,19 @@ class Game {
         text(score.score.toString().padStart(6, '0'), panelX + 120, yPos);
       }
       
-      // Draw a separator line
-      stroke(0, 100, 255);
-      strokeWeight(2);
-      line(panelX - 150, panelY + 140, panelX + 150, panelY + 140);
-      
       // Restart and menu instructions in a box
       fill(0, 0, 30);
       stroke(0, 100, 255);
       strokeWeight(2);
       rectMode(CENTER);
-      rect(panelX, panelY + 180, 300, 80, 10);
+      rect(panelX, panelY + 150, 300, 80, 10);
       
       // Restart instructions
       fill(255);
       textSize(20);
       textAlign(CENTER);
-      text("PRESS 'R' TO RESTART", panelX, panelY + 170);
-      text("PRESS 'ESC' FOR MENU", panelX, panelY + 200);
+      text("PRESS 'R' TO RESTART", panelX, panelY + 130);
+      text("PRESS 'ESC' FOR MENU", panelX, panelY + 160);
     }
     
     pop();
