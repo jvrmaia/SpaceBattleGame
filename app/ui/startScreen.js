@@ -12,6 +12,8 @@ class StartScreen {
   static selectedColorIndex = 0;
   static buttonWidth = 250;
   static buttonHeight = 60;
+  static baseWidth = 800;
+  static baseHeight = 600;
   
   /**
    * Initialize the start screen elements
@@ -23,6 +25,16 @@ class StartScreen {
       this.selectedColorIndex = parseInt(savedColorIndex);
     }
     console.log("StartScreen initialized with color index:", this.selectedColorIndex);
+  }
+  
+  /**
+   * Calculate scale ratio based on current canvas size
+   */
+  static getScaleRatio() {
+    // Calculate the scale ratio based on the smaller dimension
+    const widthRatio = width / this.baseWidth;
+    const heightRatio = height / this.baseHeight;
+    return min(widthRatio, heightRatio);
   }
   
   /**
@@ -116,24 +128,47 @@ class StartScreen {
   }
   
   /**
-   * Draw all three main panels
+   * Draw all panels on the start screen
    */
   static drawPanels() {
-    // Calculate panel positions with proper spacing
-    const panelWidth = 350; // Reduced from 400
-    const panelHeight = 400;
-    const spacing = 50; // Space between panels
+    // Get scale ratio
+    const scaleRatio = this.getScaleRatio();
     
-    // Calculate total width needed for all three panels
+    // Calculate panel dimensions based on screen size
+    const panelWidth = min(350, width * 0.3);
+    const panelHeight = min(450, height * 0.7);
+    const spacing = min(50, width * 0.05);
+    
+    // Calculate total width of all panels
     const totalWidth = panelWidth * 3 + spacing * 2;
     
-    // Calculate starting X position to center all panels
-    const startX = (width - totalWidth) / 2 + panelWidth / 2;
-    
-    // Draw each panel at its calculated position
-    this.drawHighScoresPanel(startX, height/2, panelWidth, panelHeight);
-    this.drawMainPanel(startX + panelWidth + spacing, height/2, panelWidth, panelHeight);
-    this.drawControlsPanel(startX + (panelWidth + spacing) * 2, height/2, panelWidth, panelHeight);
+    // If screen is too narrow, stack panels vertically
+    if (width < totalWidth * 0.9) {
+      // Vertical layout
+      const verticalSpacing = min(30, height * 0.05);
+      const startY = height * 0.25;
+      
+      // Draw high scores panel (top)
+      this.drawHighScoresPanel(width/2, startY, panelWidth, panelHeight * 0.8);
+      
+      // Draw ship selection panel (middle)
+      this.drawShipSelectionPanel(width/2, startY + panelHeight * 0.8 + verticalSpacing, panelWidth, panelHeight * 0.8);
+      
+      // Draw controls panel (bottom)
+      this.drawControlsPanel(width/2, startY + (panelHeight * 0.8 + verticalSpacing) * 2, panelWidth, panelHeight * 0.8);
+    } else {
+      // Horizontal layout
+      const startX = (width - totalWidth) / 2;
+      
+      // Draw high scores panel (left)
+      this.drawHighScoresPanel(startX + panelWidth/2, height/2, panelWidth, panelHeight);
+      
+      // Draw ship selection panel (center)
+      this.drawShipSelectionPanel(startX + panelWidth + spacing + panelWidth/2, height/2, panelWidth, panelHeight);
+      
+      // Draw controls panel (right)
+      this.drawControlsPanel(startX + panelWidth*2 + spacing*2 + panelWidth/2, height/2, panelWidth, panelHeight);
+    }
   }
   
   /**
@@ -163,13 +198,7 @@ class StartScreen {
     textSize(20);
     
     // Get high scores from game
-    const scores = game.highScores.length > 0 ? game.highScores : [
-      { name: "joao", score: 6600 },
-      { name: "joao", score: 2300 },
-      { name: "joao", score: 230 },
-      { name: "joao", score: 100 },
-      { name: "joao", score: 10 }
-    ];
+    const scores = game.highScores.length > 0 ? game.highScores : [];
     
     for (let i = 0; i < 5; i++) {
       const score = i < scores.length ? scores[i] : { name: "---", score: 0 };
@@ -192,7 +221,7 @@ class StartScreen {
   /**
    * Draw the main center panel with ship selection and start button
    */
-  static drawMainPanel(x, y, width, height) {
+  static drawShipSelectionPanel(x, y, width, height) {
     // Draw panel background
     this.drawPanelBackground(x, y, width, height);
     

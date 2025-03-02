@@ -16,6 +16,8 @@ class Game {
     this.playerName = "";
     this.enteringName = false;
     this.justEnded = false;
+    this.showingScoreboard = false; // New flag to track scoreboard display
+    this.nameSubmitted = false; // New flag to track if name has been submitted for this match
     this.level = 1;
     this.enemySpawnRate = 0.02;
     
@@ -32,9 +34,39 @@ class Game {
     this.joystickX = 0;
     this.joystickY = 0;
     
+    // Screen size variables
+    this.baseWidth = 800;
+    this.baseHeight = 600;
+    this.scaleRatio = 1;
+    
     // Initialize the game
     this.init();
     this.loadHighScores();
+    this.calculateScaleRatio();
+  }
+
+  calculateScaleRatio() {
+    // Calculate the scale ratio based on the smaller dimension
+    const widthRatio = width / this.baseWidth;
+    const heightRatio = height / this.baseHeight;
+    this.scaleRatio = min(widthRatio, heightRatio);
+    
+    console.log(`Scale ratio calculated: ${this.scaleRatio}`);
+  }
+
+  handleResize() {
+    // Recalculate scale ratio
+    this.calculateScaleRatio();
+    
+    // Reposition player if needed
+    if (this.player) {
+      // Keep player within bounds after resize
+      this.player.x = constrain(this.player.x, 20, width - 20);
+      this.player.y = constrain(this.player.y, 20, height - 20);
+    }
+    
+    // Regenerate stars for the new screen size
+    this.initStars();
   }
 
   init() {
@@ -52,17 +84,25 @@ class Game {
     this.gameOver = false;
     this.enteringName = false;
     this.justEnded = false;
+    this.showingScoreboard = false; // Reset scoreboard flag
     this.level = 1;
     this.enemySpawnRate = 0.02;
     
     // Initialize stars
+    this.initStars();
+  }
+
+  initStars() {
     this.stars = [];
-    for (let i = 0; i < 100; i++) {
+    const starCount = Math.floor(100 * (width * height) / (this.baseWidth * this.baseHeight));
+    
+    for (let i = 0; i < starCount; i++) {
       this.stars.push({
         x: random(width),
         y: random(height),
         size: random(1, 3),
-        speed: random(1, 3)
+        brightness: random(100, 255),
+        speed: random(0.5, 2)
       });
     }
   }
@@ -77,21 +117,11 @@ class Game {
     }
   }
 
-  saveHighScore(name, score) {
+  saveHighScores() {
     try {
-      // Add new score
-      this.highScores.push({ name, score });
-      
-      // Sort by score (highest first)
-      this.highScores.sort((a, b) => b.score - a.score);
-      
-      // Keep only top scores
-      this.highScores = this.highScores.slice(0, this.MAX_HIGH_SCORES);
-      
-      // Save to localStorage
       localStorage.setItem('highScores', JSON.stringify(this.highScores));
     } catch (e) {
-      console.error('Error saving high score:', e);
+      console.error('Error saving high scores:', e);
     }
   }
 
@@ -176,55 +206,51 @@ class Game {
     for (let i = this.bullets.length - 1; i >= 0; i--) {
       const bullet = this.bullets[i];
       
-      bullet.move();
+      bullet.update();
       
-      if (bullet.isOffscreen()) {
+      if (!bullet.active) {
         this.bullets.splice(i, 1);
       }
     }
   }
 
   display() {
-    // Draw stars background
     background(0);
     
+    push();
+    
+    // Apply scaling for responsive design
+    // scale(this.scaleRatio);
+    
+    // Draw stars
     for (const star of this.stars) {
-      fill(255, 255, 255, random(150, 255));
+      fill(255, star.brightness);
       noStroke();
-      ellipse(star.x, star.y, star.size, star.size);
-      
-      // Move stars down
-      star.y += star.speed;
-      
-      // Reset stars that go off screen
-      if (star.y > height) {
-        star.y = 0;
-        star.x = random(width);
-      }
+      ellipse(star.x, star.y, star.size);
     }
     
-    // Draw game elements if not game over
-    if (!this.gameOver) {
-      // Draw player
-      if (this.player) {
-        this.player.display();
-      }
-      
-      // Draw enemies
-      for (const enemy of this.enemies) {
-        enemy.display();
-      }
-      
-      // Draw bullets
-      for (const bullet of this.bullets) {
-        bullet.display();
-      }
+    // Draw player
+    this.player.display();
+    
+    // Draw enemies
+    for (const enemy of this.enemies) {
+      enemy.display();
     }
     
-    // Draw HUD
+    // Draw bullets
+    for (const bullet of this.bullets) {
+      bullet.display();
+    }
+    
+    // Display score and lives
     this.displayHUD();
     
-    // Draw game over screen if game is over
+    // Display touch controls if active
+    this.displayTouchControls();
+    
+    pop();
+    
+    // Display game over screen if game is over
     if (this.gameOver) {
       this.displayGameOver();
     }
@@ -237,32 +263,15 @@ class Game {
     fill(255);
     textSize(24);
     textAlign(LEFT);
-    text(`SCORE: ${this.score.toString().padStart(6, '0')}`, 20, 40);
+    text(`SCORE: ${this.score.toString().padStart(6, '0')}`, 20, 30);
     
-    // High score display
-    if (this.highScores.length > 0) {
-      const highScore = this.highScores[0];
-      textAlign(CENTER);
-      text(`HIGH SCORE: ${highScore.name} ${highScore.score.toString().padStart(6, '0')}`, width/2, 40);
-    }
+    // Lives display
+    textAlign(RIGHT);
+    text(`LIVES: ${this.lives}`, width - 20, 30);
     
     // Level display
-    textAlign(LEFT);
-    text(`LEVEL: ${this.level}`, 20, 70);
-    
-    // Lives display with hearts
-    textAlign(RIGHT);
-    text("LIVES:", width - 150, 40);
-    
-    for (let i = 0; i < this.lives; i++) {
-      this.drawHeart(width - 120 + i * 30, 35, 20);
-    }
-    
-    // Game title
-    fill(100, 100, 255, 50);
-    textSize(40);
     textAlign(CENTER);
-    text("SPACE BATTLE GAME", width/2, height - 20);
+    text(`LEVEL: ${this.level}`, width / 2, 30);
     
     pop();
   }
@@ -283,6 +292,9 @@ class Game {
     pop();
   }
   
+  /**
+   * Display game over screen
+   */
   displayGameOver() {
     push();
     
@@ -292,8 +304,8 @@ class Game {
     rect(0, 0, width, height);
     
     // Game over panel
-    const panelWidth = 500;
-    const panelHeight = 500; // Reduced height since we're showing fewer scores
+    const panelWidth = min(500, width * 0.8);
+    const panelHeight = min(500, height * 0.8);
     const panelX = width/2;
     const panelY = height/2;
     
@@ -315,7 +327,7 @@ class Game {
     // High score check
     const isHighScore = this.isHighScore();
     
-    if (this.enteringName) {
+    if (this.enteringName && !this.nameSubmitted) {
       // Name entry
       fill(255);
       textSize(24);
@@ -333,15 +345,39 @@ class Game {
       fill(0, 255, 0);
       textSize(24);
       textAlign(CENTER);
-      text(this.playerName + (frameCount % 60 < 30 ? "_" : ""), panelX, panelY + 50);
+      text(this.playerName + (frameCount % 60 < 30 ? "_" : ""), panelX, panelY + 58);
       
-      // Instructions
+      // Submit button
+      const buttonY = panelY + 100;
+      const buttonHover = mouseY > buttonY - 20 && mouseY < buttonY + 20 && 
+                          mouseX > panelX - 100 && mouseX < panelX + 100;
+      
+      // Fixed button colors
+      if (buttonHover) {
+        fill(0, 200, 0); // Bright green when hovering
+      } else {
+        fill(0, 100, 0); // Darker green when not hovering
+      }
+      
+      stroke(0, 255, 0);
+      strokeWeight(2);
+      rect(panelX, buttonY, 200, 40, 5);
+      
+      // Button text
       fill(255);
       textSize(18);
-      text("PRESS ENTER TO SUBMIT", panelX, panelY + 100);
-    } else if (isHighScore && !this.justEnded) {
+      text("SUBMIT", panelX, buttonY + 6);
+      
+      // Instructions
+      fill(200);
+      textSize(14);
+      text("PRESS ENTER OR CLICK SUBMIT", panelX, panelY + 140);
+      
+      console.log("Displaying name entry. Current name:", this.playerName);
+    } else if (isHighScore && !this.justEnded && !this.showingScoreboard && !this.nameSubmitted) {
       // Prompt to enter name
       this.enteringName = true;
+      console.log("Prompting for name entry");
     } else {
       // Display high scores
       fill(0, 255, 0);
@@ -357,9 +393,15 @@ class Game {
         
         // Highlight the player's new score
         if (this.justEnded && score.name === this.playerName && score.score === this.score) {
-          fill(255, 255, 0);
+          fill(255, 255, 0); // Bright yellow highlight for the player's score
+          
+          // Add a pulsing effect to make it more noticeable
+          const pulseAmount = sin(frameCount * 0.1) * 0.5 + 0.5;
+          stroke(255, 255 * pulseAmount, 0);
+          strokeWeight(2);
         } else {
           fill(0, 150, 255);
+          noStroke();
         }
         
         textAlign(LEFT);
@@ -388,12 +430,17 @@ class Game {
         text(score.score.toString().padStart(6, '0'), panelX + 120, yPos);
       }
       
+      // Draw a separator line
+      stroke(0, 100, 255);
+      strokeWeight(2);
+      line(panelX - 150, panelY + 80, panelX + 150, panelY + 80);
+      
       // Restart and menu instructions in a box
       fill(0, 0, 30);
       stroke(0, 100, 255);
       strokeWeight(2);
       rectMode(CENTER);
-      rect(panelX, panelY + 150, 300, 80, 10);
+      rect(panelX, panelY + 140, 300, 80, 10);
       
       // Restart instructions
       fill(255);
@@ -407,7 +454,7 @@ class Game {
   }
   
   /**
-   * Draw the game over title with neon effect
+   * Draw neon "GAME OVER" title
    */
   drawNeonGameOverTitle(x, y) {
     push();
@@ -428,9 +475,9 @@ class Game {
     const glowAmount = baseGlow + pulse * (maxGlow - baseGlow);
     
     // Calculate color values with animation
-    const r = 255 * pulse * flicker;
-    const g = 50 * pulse * flicker;
-    const b = 50 * pulse * flicker;
+    const r = 255;
+    const g = 50 + 50 * pulse * flicker;
+    const b = 50 + 50 * pulse * flicker;
     
     // Draw multiple layers for the neon effect
     
@@ -440,7 +487,7 @@ class Game {
     fill(0, 0, 0, 0); // Transparent fill
     stroke(255, 0, 0, 50 * flicker);
     strokeWeight(12);
-    textSize(60);
+    textSize(48);
     textAlign(CENTER);
     textFont('Arial Black');
     text("GAME OVER", x, y);
@@ -465,43 +512,341 @@ class Game {
     strokeWeight(2);
     text("GAME OVER", x, y);
     
-    // Reset shadow
-    drawingContext.shadowBlur = 0;
-    
     pop();
   }
   
-  handleKeyPress(key, keyCode) {
-    if (this.enteringName) {
-      if (keyCode === ENTER) {
-        if (this.playerName.trim().length > 0) {
-          this.saveHighScore(this.playerName.trim(), this.score);
-          this.enteringName = false;
-        }
-      } else if (keyCode === BACKSPACE) {
-        this.playerName = this.playerName.slice(0, -1);
-      } else if (key.length === 1 && this.playerName.length < 10) {
-        // Only allow letters, numbers, and some special characters
-        const validChars = /^[a-zA-Z0-9!@#$%^&*()_\-+=[\]{}|:;,.<>?]$/;
-        if (validChars.test(key)) {
-          this.playerName += key;
-        }
+  /**
+   * Add a new high score to the list
+   */
+  addHighScore(name, score) {
+    // Check if the player already has a score
+    const existingIndex = this.highScores.findIndex(entry => entry.name === name);
+    
+    if (existingIndex !== -1) {
+      // Player already exists in high scores
+      const existingScore = this.highScores[existingIndex];
+      
+      // Only update if the new score is higher
+      if (score > existingScore.score) {
+        // Remove the existing entry
+        this.highScores.splice(existingIndex, 1);
+        
+        // Add the new higher score
+        this.highScores.push({ name, score });
+      } else {
+        // New score is not higher, don't add it
+        console.log(`${name}'s new score (${score}) is not higher than their existing score (${existingScore.score})`);
+        return false;
       }
+    } else {
+      // New player, add their score
+      this.highScores.push({ name, score });
     }
+    
+    // Sort high scores in descending order
+    this.highScores.sort((a, b) => b.score - a.score);
+    
+    // Trim to maximum number of high scores
+    if (this.highScores.length > this.MAX_HIGH_SCORES) {
+      this.highScores = this.highScores.slice(0, this.MAX_HIGH_SCORES);
+    }
+    
+    // Save high scores to localStorage
+    this.saveHighScores();
+    
+    return true;
   }
-
+  
+  /**
+   * Check if the current score qualifies as a high score
+   */
   isHighScore() {
+    // If name already submitted for this match, don't prompt again
+    if (this.nameSubmitted) {
+      return false;
+    }
+    
+    // If we don't have enough high scores yet, any score qualifies
     if (this.highScores.length < this.MAX_HIGH_SCORES) {
       return true;
     }
     
-    for (let i = 0; i < this.highScores.length; i++) {
-      if (this.score > this.highScores[i].score) {
-        return true;
+    // Check if the player already has a higher score
+    if (this.playerName) {
+      const existingIndex = this.highScores.findIndex(entry => entry.name === this.playerName);
+      if (existingIndex !== -1 && this.highScores[existingIndex].score >= this.score) {
+        // Player already has a higher or equal score
+        return false;
       }
     }
     
-    return false;
+    // Check if the current score is higher than the lowest high score
+    return this.score > this.highScores[this.highScores.length - 1].score;
+  }
+  
+  /**
+   * Handle key press events
+   */
+  handleKeyPress(key) {
+    if (this.gameOver) {
+      if (this.enteringName) {
+        this.handleNameEntry(key);
+      }
+      return;
+    }
+    
+    // Handle spacebar for firing
+    if (key === " ") {
+      this.fireBullet();
+    }
+  }
+  
+  /**
+   * Handle key press during name entry
+   */
+  handleNameEntry(key) {
+    // If name already submitted for this match, ignore input
+    if (this.nameSubmitted) {
+      console.log("Name already submitted for this match");
+      this.enteringName = false;
+      this.showingScoreboard = true;
+      return;
+    }
+    
+    console.log("Name entry key:", key, "Current name:", this.playerName);
+    
+    if (key === "Enter") {
+      // Submit name
+      if (this.playerName.trim().length > 0) {
+        console.log("Submitting name:", this.playerName, "with score:", this.score);
+        const added = this.addHighScore(this.playerName, this.score);
+        console.log("High score added:", added);
+        this.enteringName = false;
+        this.justEnded = true;
+        this.showingScoreboard = true;
+        this.nameSubmitted = true; // Mark name as submitted for this match
+        this.saveHighScores(); // Ensure scores are saved immediately
+      }
+    } else if (key === "Backspace") {
+      // Remove last character
+      this.playerName = this.playerName.slice(0, -1);
+      console.log("Backspace pressed, name now:", this.playerName);
+    } else if (key.length === 1 && this.playerName.length < 10) {
+      // Add character if it's a single character and name is not too long
+      this.playerName += key;
+      console.log("Character added, name now:", this.playerName);
+    }
+  }
+
+  /**
+   * Handle touch start event
+   */
+  handleTouchStart(x, y) {
+    this.touchActive = true;
+    this.touchX = x;
+    this.touchY = y;
+    
+    // Check if touch is in the left half (movement) or right half (shooting)
+    if (x < width / 2) {
+      // Left side - movement joystick
+      this.joystickActive = true;
+      this.joystickBaseX = x;
+      this.joystickBaseY = y;
+      this.joystickX = x;
+      this.joystickY = y;
+    } else {
+      // Right side - fire
+      this.fireBullet();
+      this.lastTouchTime = millis();
+    }
+  }
+  
+  /**
+   * Handle touch move event
+   */
+  handleTouchMove(x, y) {
+    this.touchX = x;
+    this.touchY = y;
+    
+    if (this.joystickActive) {
+      // Update joystick position
+      this.joystickX = x;
+      this.joystickY = y;
+      
+      // Calculate joystick displacement
+      let dx = this.joystickX - this.joystickBaseX;
+      let dy = this.joystickY - this.joystickBaseY;
+      
+      // Limit to joystick radius
+      const distance = sqrt(dx * dx + dy * dy);
+      if (distance > this.virtualJoystickRadius) {
+        dx = dx * this.virtualJoystickRadius / distance;
+        dy = dy * this.virtualJoystickRadius / distance;
+        this.joystickX = this.joystickBaseX + dx;
+        this.joystickY = this.joystickBaseY + dy;
+      }
+      
+      // Move player based on joystick position
+      const moveSpeed = 5;
+      const moveX = map(dx, -this.virtualJoystickRadius, this.virtualJoystickRadius, -moveSpeed, moveSpeed);
+      const moveY = map(dy, -this.virtualJoystickRadius, this.virtualJoystickRadius, -moveSpeed, moveSpeed);
+      
+      this.player.x = constrain(this.player.x + moveX, 20, width - 20);
+      this.player.y = constrain(this.player.y + moveY, 20, height - 20);
+    } else if (x > width / 2) {
+      // Right side - continuous fire
+      const currentTime = millis();
+      if (currentTime - this.lastTouchTime > this.touchFireThreshold) {
+        this.fireBullet();
+        this.lastTouchTime = currentTime;
+      }
+    }
+  }
+  
+  /**
+   * Handle touch end event
+   */
+  handleTouchEnd() {
+    this.touchActive = false;
+    this.joystickActive = false;
+  }
+  
+  /**
+   * Display virtual joystick when active
+   */
+  displayTouchControls() {
+    if (!this.touchActive || this.gameOver) return;
+    
+    push();
+    
+    // Draw virtual joystick if active
+    if (this.joystickActive) {
+      // Joystick base
+      noFill();
+      stroke(255, 100);
+      strokeWeight(2);
+      ellipse(this.joystickBaseX, this.joystickBaseY, this.virtualJoystickRadius * 2);
+      
+      // Joystick handle
+      fill(this.playerColor[0], this.playerColor[1], this.playerColor[2], 150);
+      stroke(255);
+      ellipse(this.joystickX, this.joystickY, 40);
+    }
+    
+    // Draw fire button indicator on right side
+    if (this.touchX > width / 2) {
+      noFill();
+      stroke(255, 0, 0, 100);
+      strokeWeight(2);
+      ellipse(width - 80, height - 80, 60);
+      
+      fill(255, 0, 0, 100);
+      textSize(16);
+      textAlign(CENTER, CENTER);
+      text("FIRE", width - 80, height - 80);
+    }
+    
+    pop();
+  }
+
+  /**
+   * Fire a bullet from the player's position
+   */
+  fireBullet() {
+    if (this.gameOver) return;
+    
+    // Create a new bullet at the player's position
+    const bullet = {
+      x: this.player.x,
+      y: this.player.y - 20,
+      dx: 0,
+      dy: -10,
+      width: 4,
+      height: 10,
+      color: [...this.playerColor], // Copy the player's color
+      active: true,
+      
+      // Update bullet position
+      update: function() {
+        this.x += this.dx;
+        this.y += this.dy;
+        
+        // Deactivate bullets that go off screen
+        if (this.y < -this.height || this.y > height + this.height ||
+            this.x < -this.width || this.x > width + this.width) {
+          this.active = false;
+        }
+      },
+      
+      // Display the bullet
+      display: function() {
+        push();
+        
+        // Bullet glow effect
+        drawingContext.shadowBlur = 10;
+        drawingContext.shadowColor = `rgb(${this.color[0]}, ${this.color[1]}, ${this.color[2]})`;
+        
+        // Bullet body
+        fill(this.color);
+        noStroke();
+        rectMode(CENTER);
+        rect(this.x, this.y, this.width, this.height, 2);
+        
+        // Reset shadow
+        drawingContext.shadowBlur = 0;
+        
+        pop();
+      },
+      
+      // Check if bullet collides with an entity
+      collidesWith: function(entity) {
+        return (
+          this.x - this.width/2 < entity.x + entity.width/2 &&
+          this.x + this.width/2 > entity.x - entity.width/2 &&
+          this.y - this.height/2 < entity.y + entity.height/2 &&
+          this.y + this.height/2 > entity.y - entity.height/2
+        );
+      }
+    };
+    
+    // Add bullet to the game
+    this.bullets.push(bullet);
+    
+    // Play sound effect (if available)
+    if (typeof playLaserSound === 'function') {
+      playLaserSound();
+    }
+  }
+
+  /**
+   * Game over state
+   */
+  endGame() {
+    this.gameOver = true;
+    
+    // Only prompt for name entry if it's a high score and name hasn't been submitted yet
+    this.enteringName = this.isHighScore() && !this.nameSubmitted;
+    
+    this.showingScoreboard = false;
+    
+    // Only reset player name if we haven't submitted a name yet
+    if (!this.nameSubmitted) {
+      this.playerName = "";
+    }
+    
+    console.log("Game over. High score?", this.enteringName, "Name submitted?", this.nameSubmitted);
+  }
+  
+  /**
+   * Restart the game
+   */
+  restart() {
+    this.init();
+    this.gameOver = false;
+    this.enteringName = false;
+    this.justEnded = false;
+    this.showingScoreboard = false;
+    this.nameSubmitted = false; // Reset name submitted flag for new match
   }
 }
 
