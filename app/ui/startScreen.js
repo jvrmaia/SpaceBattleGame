@@ -1,5 +1,6 @@
 // Start screen with spaceship color selection
 class StartScreen {
+  // Configuration
   static colorOptions = [
     { name: "Green", color: [0, 255, 0] },
     { name: "Blue", color: [0, 150, 255] },
@@ -9,564 +10,501 @@ class StartScreen {
   ];
   
   static selectedColorIndex = 0;
-  static buttonWidth = 200;
-  static buttonHeight = 50;
-  static shipY = 0; // For ship animation
-  static titleY = 0; // For title animation
-  static frameCounter = 0; // For blinking effects
-  static stars = []; // For retro star field
-  static currentTagline = 0; // Current tagline index
-  static taglineTimer = 0; // Timer for tagline rotation
+  static buttonWidth = 250;
+  static buttonHeight = 60;
   
-  // Engaging taglines to encourage play
-  static taglines = [
-    "DEFEND EARTH FROM ALIEN INVASION!",
-    "CAN YOU BEAT THE HIGH SCORE?",
-    "BLAST OFF INTO ADVENTURE!",
-    "THE GALAXY NEEDS A HERO!",
-    "PREPARE FOR SPACE COMBAT!",
-    "SHOW THOSE ALIENS WHO'S BOSS!",
-    "BECOME THE ULTIMATE SPACE PILOT!",
-    "YOUR MISSION: SAVE HUMANITY!",
-    "READY YOUR LASERS, CAPTAIN!",
-    "SPACE AWAITS YOUR COMMAND!"
-  ];
-  
-  // Initialize the start screen elements
+  /**
+   * Initialize the start screen elements
+   */
   static initialize() {
-    // Create star field for retro effect
-    this.stars = [];
-    for (let i = 0; i < 100; i++) {
-      this.stars.push({
-        x: random(width),
-        y: random(height),
-        size: random(1, 3),
-        speed: random(1, 3),
-        blinkRate: random(0.02, 0.1),
-        blinkState: random() > 0.5
-      });
-    }
-    
     // Try to load saved color preference
     const savedColorIndex = localStorage.getItem('playerColorIndex');
     if (savedColorIndex !== null) {
       this.selectedColorIndex = parseInt(savedColorIndex);
     }
-    
-    // Set initial positions for animations
-    this.shipY = height + 100;
-    this.titleY = -100;
-    
-    // Initialize tagline
-    this.currentTagline = floor(random(this.taglines.length));
-    this.taglineTimer = 0;
+    console.log("StartScreen initialized with color index:", this.selectedColorIndex);
   }
   
-  static update() {
-    // Update frame counter for blinking effects
-    this.frameCounter++;
-    
-    // Animate ship position (move up to final position)
-    if (this.shipY > height - 150) {
-      this.shipY -= 5;
-    }
-    
-    // Animate title position (move down to final position)
-    if (this.titleY < 80) {
-      this.titleY += 5;
-    }
-    
-    // Update stars
-    for (let star of this.stars) {
-      // Move stars
-      star.y += star.speed;
-      if (star.y > height) {
-        star.y = 0;
-        star.x = random(width);
-      }
-      
-      // Blink stars
-      if (random() < star.blinkRate) {
-        star.blinkState = !star.blinkState;
-      }
-    }
-    
-    // Update tagline
-    this.taglineTimer++;
-    if (this.taglineTimer > 300) { // Change tagline every 5 seconds
-      this.currentTagline = (this.currentTagline + 1) % this.taglines.length;
-      this.taglineTimer = 0;
-    }
-  }
-  
+  /**
+   * Main display method - renders the entire start screen
+   */
   static display() {
+    this.drawBackground();
+    this.drawNeonTitle();
+    this.drawPanels();
+  }
+  
+  /**
+   * Draw animated starfield background
+   */
+  static drawBackground() {
     background(0);
     
-    // Update animations
-    this.update();
-    
-    // Draw background grid
-    stroke(0, 100, 100, 50);
-    strokeWeight(1);
-    for (let y = 0; y < height; y += 40) {
-      line(0, y, width, y);
+    // Draw animated stars in background
+    for (let i = 0; i < 100; i++) {
+      const starY = (height + (frameCount * (i % 5 + 1) / 10) % height);
+      const brightness = map(sin(frameCount * 0.01 + i), -1, 1, 150, 255);
+      fill(255, brightness);
+      noStroke();
+      ellipse(width * (i / 100), starY, random(1, 3), random(1, 3));
     }
-    for (let x = 0; x < width; x += 40) {
-      line(x, 0, x, height);
-    }
+  }
+  
+  /**
+   * Draw the game title with enhanced neon effect and animation
+   */
+  static drawNeonTitle() {
+    push();
     
-    // Draw stars
-    noStroke();
-    for (let star of this.stars) {
-      if (star.blinkState) {
-        fill(255);
-        ellipse(star.x, star.y, star.size, star.size);
-      }
-    }
+    // Calculate animation values
+    const pulseRate = 0.05;
+    const flickerRate = 0.2;
+    const baseGlow = 15;
+    const maxGlow = 25;
     
-    // Calculate layout based on screen size
-    const centerX = width / 2;
-    const centerPanelWidth = min(500, width * 0.3);
-    const sidePanelWidth = min(300, width * 0.25);
-    const panelHeight = min(500, height * 0.7);
-    const panelPadding = width * 0.05;
+    // Pulse effect (smooth sine wave)
+    const pulse = sin(frameCount * pulseRate) * 0.5 + 0.5;
     
-    // Calculate panel positions
-    const leftPanelX = sidePanelWidth / 2 + panelPadding;
-    const rightPanelX = width - sidePanelWidth / 2 - panelPadding;
-    const panelY = height / 2 + 50; // Move down to make room for title
+    // Random flicker effect (occasional dimming)
+    const flicker = random() > 0.95 ? random(0.7, 0.9) : 1;
     
-    // Draw title
+    // Calculate current glow amount
+    const glowAmount = baseGlow + pulse * (maxGlow - baseGlow);
+    
+    // Calculate color values with animation
+    const r = 50 + 205 * pulse * flicker;
+    const g = 150 + 105 * pulse * flicker;
+    const b = 255 * pulse * flicker;
+    
+    // Draw multiple layers for the neon effect
+    
+    // Outer glow (largest)
+    drawingContext.shadowBlur = glowAmount * 2;
+    drawingContext.shadowColor = `rgba(0, 100, 255, ${0.3 * flicker})`;
+    fill(0, 0, 0, 0); // Transparent fill
+    stroke(0, 100, 255, 50 * flicker);
+    strokeWeight(12);
+    textSize(72);
     textAlign(CENTER);
-    textSize(min(60, width * 0.08));
+    textFont('Arial Black');
+    text("SPACE BATTLE GAME", width/2, height * 0.15);
     
-    // Title glow
-    drawingContext.shadowBlur = 20;
-    drawingContext.shadowColor = 'rgba(0, 255, 255, 0.8)';
+    // Middle glow
+    drawingContext.shadowBlur = glowAmount * 1.5;
+    drawingContext.shadowColor = `rgba(50, 150, 255, ${0.5 * flicker})`;
+    stroke(50, 150, 255, 100 * flicker);
+    strokeWeight(8);
+    text("SPACE BATTLE GAME", width/2, height * 0.15);
     
-    fill(0, 255, 255);
-    text("SPACE BATTLE", centerX, this.titleY);
+    // Inner glow
+    drawingContext.shadowBlur = glowAmount;
+    drawingContext.shadowColor = `rgba(${r}, ${g}, ${b}, ${0.8 * flicker})`;
+    stroke(r, g, b, 200 * flicker);
+    strokeWeight(4);
+    text("SPACE BATTLE GAME", width/2, height * 0.15);
     
-    // Subtitle
-    textSize(min(24, width * 0.03));
-    fill(255, 100, 100);
-    text("ARCADE EDITION", centerX, this.titleY + 40);
+    // Core text
+    fill(255, 255, 255, 255 * flicker);
+    stroke(r, g, b, 255 * flicker);
+    strokeWeight(2);
+    text("SPACE BATTLE GAME", width/2, height * 0.15);
     
     // Reset shadow
     drawingContext.shadowBlur = 0;
     
-    // Draw side panels
-    this.drawTaglines(leftPanelX, panelY, sidePanelWidth, panelHeight);
-    this.drawKeyboardInstructions(rightPanelX, panelY, sidePanelWidth, panelHeight);
-    
-    // Draw center panel for ship selection
-    this.drawCenterPanel(centerX, panelY, centerPanelWidth, panelHeight);
-    
-    // Draw scanlines effect
-    this.drawScanlines();
+    pop();
   }
   
-  static drawCenterPanel(x, y, width, height) {
+  /**
+   * Draw all three main panels
+   */
+  static drawPanels() {
+    // Calculate panel positions with proper spacing
+    const panelWidth = 350; // Reduced from 400
+    const panelHeight = 400;
+    const spacing = 50; // Space between panels
+    
+    // Calculate total width needed for all three panels
+    const totalWidth = panelWidth * 3 + spacing * 2;
+    
+    // Calculate starting X position to center all panels
+    const startX = (width - totalWidth) / 2 + panelWidth / 2;
+    
+    // Draw each panel at its calculated position
+    this.drawHighScoresPanel(startX, height/2, panelWidth, panelHeight);
+    this.drawMainPanel(startX + panelWidth + spacing, height/2, panelWidth, panelHeight);
+    this.drawControlsPanel(startX + (panelWidth + spacing) * 2, height/2, panelWidth, panelHeight);
+  }
+  
+  /**
+   * Draw the high scores panel
+   */
+  static drawHighScoresPanel(x, y, width, height) {
     // Panel background
-    fill(0, 0, 50, 150);
+    this.drawPanelBackground(x, y, width, height);
+    
+    // High scores title
+    fill(0, 255, 0);
+    textSize(30);
+    textFont('Courier New');
+    textAlign(CENTER);
+    text("HIGH SCORES", x, y - 150);
+    
+    // Column headers
+    fill(0, 255, 0);
+    textSize(20);
+    textAlign(LEFT);
+    text("RANK", x - 120, y - 110);
+    text("NAME", x - 60, y - 110);
+    text("SCORE", x + 60, y - 110);
+    
+    // High scores
+    fill(0, 150, 255);
+    textSize(20);
+    
+    // Get high scores from game
+    const scores = game.highScores.length > 0 ? game.highScores : [
+      { name: "joao", score: 6600 },
+      { name: "joao", score: 2300 },
+      { name: "joao", score: 230 },
+      { name: "joao", score: 100 },
+      { name: "joao", score: 10 }
+    ];
+    
+    for (let i = 0; i < 5; i++) {
+      const score = i < scores.length ? scores[i] : { name: "---", score: 0 };
+      textAlign(LEFT);
+      text(i + 1, x - 120, y - 70 + i * 40);
+      text(score.name, x - 60, y - 70 + i * 40);
+      textAlign(RIGHT);
+      text(score.score.toString().padStart(6, '0'), x + 120, y - 70 + i * 40);
+    }
+    
+    // Insert coin text with blinking effect
+    if (frameCount % 60 < 30) {
+      fill(0, 255, 0);
+      textSize(24);
+      textAlign(CENTER);
+      text("INSERT COIN", x, y + 150);
+    }
+  }
+  
+  /**
+   * Draw the main center panel with ship selection and start button
+   */
+  static drawMainPanel(x, y, width, height) {
+    // Draw panel background
+    this.drawPanelBackground(x, y, width, height);
+    
+    // Draw panel title at the top
+    this.drawPanelTitle(x, y - 140, "SELECT SHIP COLOR");
+    
+    // Draw ship preview closer to the title
+    const shipColor = this.colorOptions[this.selectedColorIndex].color;
+    this.drawShipPreview(x, y - 60, shipColor);
+    
+    // Draw color selection options closer to the ship
+    this.drawColorOptions(x, y + 40);
+    
+    // Draw start button closer to the color options
+    this.drawStartButton(x, y + 120);
+    
+    // Draw "PRESS ENTER TO START" text below the button but inside the box
+    fill(255);
+    textSize(16);
+    textAlign(CENTER);
+    text("PRESS ENTER TO START", x, y + 170);
+  }
+  
+  /**
+   * Draw the controls panel
+   */
+  static drawControlsPanel(x, y, width, height) {
+    // Draw panel background
+    this.drawPanelBackground(x, y, width, height);
+    
+    // Draw panel title
+    this.drawPanelTitle(x, y - 140, "CONTROLS");
+    
+    // Calculate spacing for controls sections
+    const sectionSpacing = 70;
+    const startY = y - 80;
+    
+    // Draw movement controls
+    this.drawMovementControls(x, startY);
+    
+    // Draw fire controls
+    this.drawFireControls(x, startY + sectionSpacing);
+    
+    // Draw restart controls
+    this.drawRestartControls(x, startY + sectionSpacing * 2);
+    
+    // Draw menu controls
+    this.drawMenuControls(x, startY + sectionSpacing * 3);
+  }
+  
+  /**
+   * Draw a panel background with border
+   */
+  static drawPanelBackground(x, y, width, height) {
+    fill(0, 0, 50);
     stroke(0, 200, 255);
     strokeWeight(2);
     rectMode(CENTER);
     rect(x, y, width, height, 10);
-    
-    // Panel title
-    fill(0, 200, 255);
-    textSize(min(24, width * 0.12));
+  }
+  
+  /**
+   * Draw a panel title
+   */
+  static drawPanelTitle(x, y, title) {
+    fill(0, 255, 0);
+    textSize(30);
+    textFont('Courier New');
     textAlign(CENTER);
-    text("SELECT SHIP", x, y - height/2 + 40);
+    text(title, x, y);
+  }
+  
+  /**
+   * Draw ship preview with animated engine flames
+   */
+  static drawShipPreview(x, y, shipColor) {
+    push();
+    translate(x, y);
     
-    // Draw color options
+    // Draw ship body
+    fill(shipColor);
+    stroke(255);
+    strokeWeight(2);
+    triangle(0, -30, 30, 30, -30, 30);
+    
+    // Draw cockpit
+    fill(255);
+    noStroke();
+    ellipse(0, 0, 15, 15);
+    
+    // Draw animated engine flames
+    this.drawEngineFlames(0, 30);
+    
+    pop();
+  }
+  
+  /**
+   * Draw animated engine flames
+   */
+  static drawEngineFlames(x, y) {
+    // Flame animation based on frame count
+    const flameSize = map(sin(frameCount * 0.2), -1, 1, 0.7, 1.3);
+    
+    // Main flame
+    fill(255, 100, 0, 200);
+    noStroke();
+    triangle(x, y, x + 20 * flameSize, y + 30 * flameSize, x - 20 * flameSize, y + 30 * flameSize);
+    
+    // Inner flame
+    fill(255, 200, 0, 200);
+    triangle(x, y + 5, x + 10 * flameSize, y + 20 * flameSize, x - 10 * flameSize, y + 20 * flameSize);
+  }
+  
+  /**
+   * Draw color selection options
+   */
+  static drawColorOptions(x, y) {
     const options = this.colorOptions;
-    const spacing = min(60, width * 0.8 / options.length);
+    const spacing = 60;
     const startX = x - (spacing * (options.length - 1)) / 2;
-    const colorY = y - height/4;
     
     for (let i = 0; i < options.length; i++) {
       const optionX = startX + i * spacing;
+      const color = options[i].color;
       
       // Draw color circle
-      fill(options[i].color);
+      fill(color);
       stroke(255);
       strokeWeight(i === this.selectedColorIndex ? 4 : 1);
-      ellipse(optionX, colorY, 40, 40);
+      ellipse(optionX, y, 40, 40);
     }
+  }
+  
+  /**
+   * Draw start button with glow effect
+   */
+  static drawStartButton(x, y) {
+    // Button glow effect
+    const glowIntensity = map(sin(frameCount * 0.1), -1, 1, 10, 20);
     
-    // Draw larger ship preview with pilot
-    const shipY = y;
-    const shipColor = this.colorOptions[this.selectedColorIndex].color;
-    this.drawEnhancedShipPreview(x, shipY, 100, shipColor);
+    // Draw button with glow
+    drawingContext.shadowBlur = glowIntensity;
+    drawingContext.shadowColor = 'rgba(0, 255, 0, 0.8)';
     
-    // Calculate button position
-    const buttonY = y + height/2 - 60;
-    
-    // Create blinking effect for the button
-    const buttonGlow = sin(frameCount * 0.1) * 50 + 150; // Oscillate between 100 and 200
-    const buttonColor = [0, buttonGlow, 0]; // Pulsing green
-    
-    // Draw start button with pulsing effect
-    fill(buttonColor);
-    stroke(255);
+    // Button background
+    fill(0, 200, 0);
+    stroke(0, 255, 0);
     strokeWeight(3);
     rectMode(CENTER);
-    rect(x, buttonY, this.buttonWidth, this.buttonHeight, 10);
+    rect(x, y, this.buttonWidth, this.buttonHeight, 10);
     
-    // Add glow effect to button
-    drawingContext.shadowBlur = 15;
-    drawingContext.shadowColor = `rgba(0, 255, 0, ${buttonGlow/255})`;
-    
-    // Draw button text - centered both horizontally and vertically
+    // Button text
     fill(255);
-    textSize(min(24, width * 0.1));
-    textAlign(CENTER, CENTER); // Center both horizontally and vertically
-    text("START GAME", x, buttonY);
+    textSize(30);
+    textFont('Arial Black');
+    textAlign(CENTER, CENTER);
+    text("START GAME", x, y);
     
     // Reset shadow
     drawingContext.shadowBlur = 0;
   }
   
-  static drawEnhancedShipPreview(x, y, size, color) {
-    push();
-    translate(x, y);
-    
-    // Landing pad
-    fill(100, 100, 100);
-    stroke(150, 150, 150);
-    strokeWeight(2);
-    ellipse(0, size/2 + 10, size * 1.2, 20);
-    
-    // Draw ship body - larger size
-    fill(color);
-    stroke(255);
-    strokeWeight(2);
-    
-    // Ship shape
-    triangle(
-      0, -size/2,
-      -size/2, size/2,
-      size/2, size/2
-    );
-    
-    // Engine flames with animation
-    const flameSize = sin(frameCount * 0.2) * 10 + 20; // Animated flame size
-    fill(255, 150, 0, 200);
-    noStroke();
-    
-    // Main flame
-    triangle(
-      0, size/2,
-      -size/4, size/2 + flameSize,
-      size/4, size/2 + flameSize
-    );
-    
-    // Secondary flames
-    fill(255, 255, 0, 150);
-    triangle(
-      0, size/2,
-      -size/6, size/2 + flameSize * 0.7,
-      size/6, size/2 + flameSize * 0.7
-    );
-    
-    // Ship details
-    stroke(200);
-    strokeWeight(1);
-    
-    // Cockpit window
-    fill(200, 200, 255);
-    ellipse(0, -size/6, size/3, size/4);
-    
-    // Wing details
-    line(-size/4, size/4, size/4, size/4);
-    
-    // Ship lights
-    noStroke();
-    fill(255, 255, 0, 150 + sin(frameCount * 0.2) * 100);
-    ellipse(-size/3, 0, size/10, size/10);
-    ellipse(size/3, 0, size/10, size/10);
-    
-    // Draw pilot character outside the ship
-    this.drawPilot(size/2 + 30, size/3, size/4);
-    
-    pop();
-  }
-  
-  static drawPilot(x, y, size) {
-    push();
-    translate(x, y);
-    
-    // Pilot body
-    fill(50, 50, 200);
-    stroke(0);
-    strokeWeight(1);
-    ellipse(0, 0, size, size * 1.5); // Body
-    
-    // Helmet
-    fill(200, 200, 255, 200);
-    stroke(255);
-    strokeWeight(1);
-    ellipse(0, -size/2, size * 0.8, size * 0.8);
-    
-    // Face
-    fill(255, 220, 180);
-    noStroke();
-    ellipse(0, -size/2, size * 0.6, size * 0.6);
-    
-    // Eyes
-    fill(0);
-    ellipse(-size/6, -size/2, size/10, size/10);
-    ellipse(size/6, -size/2, size/10, size/10);
-    
-    // Smile - animated
-    stroke(0);
-    strokeWeight(1);
-    noFill();
-    const smileSize = sin(frameCount * 0.1) * 0.1 + 0.5; // Animate smile
-    arc(0, -size/2 + size/10, size/3, size/3 * smileSize, 0, PI);
-    
-    // Waving arm - animated
-    stroke(50, 50, 200);
-    strokeWeight(size/10);
-    const armAngle = sin(frameCount * 0.1) * 0.3 + 0.3; // Animate arm
-    line(0, -size/4, size/2 * cos(-PI/4 - armAngle), -size/4 - size/2 * sin(-PI/4 - armAngle));
-    
-    // Hand
-    fill(255, 220, 180);
-    noStroke();
-    ellipse(size/2 * cos(-PI/4 - armAngle), -size/4 - size/2 * sin(-PI/4 - armAngle), size/5, size/5);
-    
-    pop();
-  }
-  
-  static drawKeyboardInstructions(x, y, width, height) {
-    // Panel background
-    fill(0, 0, 50, 150);
-    stroke(255, 150, 0);
-    strokeWeight(2);
-    rectMode(CENTER);
-    rect(x, y, width, height, 10);
-    
-    // Panel title
-    fill(255, 150, 0);
-    textSize(min(24, width * 0.12));
+  /**
+   * Draw movement controls section
+   */
+  static drawMovementControls(x, y) {
+    // Movement section title
+    fill(0, 255, 255);
+    textSize(24);
     textAlign(CENTER);
-    text("CONTROLS", x, y - height/2 + 40);
+    text("MOVEMENT", x, y);
     
-    // Calculate key size based on available space
-    const keySize = min(40, width * 0.15);
-    const keyTextSize = min(16, width * 0.07);
-    
-    // Movement section - title first, then keys directly below
-    fill(255);
-    textSize(min(20, width * 0.09));
-    const movementTitleY = y - height/4;
-    text("MOVEMENT", x, movementTitleY);
-    
-    // Draw arrow keys in proper layout directly below the title
-    const arrowY = movementTitleY + 50; // Position keys below the title
-    const arrowSpacing = keySize * 1.2;
+    // Arrow keys
+    const keySize = 40;
+    const keyY = y + 40;
     
     // Up arrow
-    this.drawKey("↑", x, arrowY, keySize);
-    
-    // Left, Down, Right arrows in a row
-    this.drawKey("←", x - arrowSpacing, arrowY + arrowSpacing, keySize);
-    this.drawKey("↓", x, arrowY + arrowSpacing, keySize);
-    this.drawKey("→", x + arrowSpacing, arrowY + arrowSpacing, keySize);
-    
-    // Action controls section
-    fill(255);
-    textSize(min(20, width * 0.09));
-    text("ACTION", x, y + height/6);
-    
-    // Space bar - centered and larger
-    this.drawKey("SPACE", x, y + height/6 + 50, keySize * 3, keySize, "FIRE");
-    
-    // Tips at bottom
-    fill(200, 200, 100);
-    textSize(min(14, width * 0.06));
-    text("TIP: AVOID ENEMY SHIPS!", x, y + height/2 - 40);
-  }
-  
-  static drawKey(label, x, y, width, height = width, sublabel = null) {
-    // Key background
     fill(50);
     stroke(200);
-    strokeWeight(2);
-    rectMode(CENTER);
-    rect(x, y, width, height, 5);
+    strokeWeight(1);
+    rect(x, keyY, keySize, keySize, 5);
     
-    // Key label
-    fill(255);
-    noStroke();
-    textSize(min(16, width * 0.5));
-    textAlign(CENTER, CENTER);
-    text(label, x, y);
+    // Arrow keys row
+    const keysRowY = keyY + keySize;
     
-    // Optional sublabel below key
-    if (sublabel) {
-      textSize(min(14, width * 0.3));
-      text(sublabel, x, y + height/2 + 15);
-    }
-  }
-  
-  static drawTaglines(x, y, width, height) {
-    // Panel background
-    fill(0, 0, 50, 150);
-    stroke(0, 255, 0);
-    strokeWeight(2);
-    rectMode(CENTER);
-    rect(x, y, width, height, 10);
+    // Left arrow
+    rect(x - keySize, keysRowY, keySize, keySize, 5);
     
-    // Panel title
+    // Down arrow
+    rect(x, keysRowY, keySize, keySize, 5);
+    
+    // Right arrow
+    rect(x + keySize, keysRowY, keySize, keySize, 5);
+    
+    // Arrow symbols
     fill(0, 255, 0);
-    textSize(min(24, width * 0.12));
+    textSize(20);
+    textAlign(CENTER, CENTER);
+    text("↑", x, keyY);
+    text("←", x - keySize, keysRowY);
+    text("↓", x, keysRowY);
+    text("→", x + keySize, keysRowY);
+  }
+  
+  /**
+   * Draw fire controls section
+   */
+  static drawFireControls(x, y) {
+    // Fire section title
+    fill(0, 255, 255);
+    textSize(24);
     textAlign(CENTER);
-    text("MISSION", x, y - height/2 + 40);
+    text("FIRE", x, y);
     
-    // Draw current tagline with animation
-    const fadeEffect = sin(frameCount * 0.05) * 50 + 200;
-    fill(255, 255, 0, fadeEffect);
-    textSize(min(18, width * 0.08));
+    // Space bar
+    const keySize = 40;
+    fill(50);
+    stroke(200);
+    rect(x, y + 30, keySize * 3, keySize, 5);
+    
+    // Space bar text
+    fill(0, 255, 0);
+    textSize(18);
+    text("SPACE", x, y + 30);
+  }
+  
+  /**
+   * Draw restart controls section
+   */
+  static drawRestartControls(x, y) {
+    // Restart section title
+    fill(0, 255, 255);
+    textSize(24);
     textAlign(CENTER);
+    text("RESTART", x, y);
     
-    // Word wrap the tagline
-    const tagline = this.taglines[this.currentTagline];
-    const words = tagline.split(' ');
-    let line = '';
-    let lineY = y - height/4;
-    const maxLineWidth = width - 40;
+    // R key
+    const keySize = 40;
+    fill(50);
+    stroke(200);
+    rect(x, y + 30, keySize, keySize, 5);
     
-    for (let i = 0; i < words.length; i++) {
-      const testLine = line + words[i] + ' ';
-      const testWidth = textWidth(testLine);
-      
-      if (testWidth > maxLineWidth) {
-        text(line, x, lineY);
-        line = words[i] + ' ';
-        lineY += 30;
-      } else {
-        line = testLine;
-      }
-    }
-    text(line, x, lineY);
-    
-    // Draw animated UFO
-    this.drawAnimatedUFO(x, y + 20, width * 0.4);
-    
-    // Draw enemy preview
-    const enemySize = min(30, width * 0.12);
-    this.drawEnemyPreview(x - width/4, y + height/4, enemySize);
-    this.drawEnemyPreview(x + width/4, y + height/4, enemySize);
-    
-    // Draw mission status
-    fill(255);
-    textSize(min(16, width * 0.08));
-    text("EARTH DEFENSE:", x, y + height/2 - 60);
-    
-    // Draw blinking critical status
-    if (frameCount % 60 < 30) {
-      fill(255, 0, 0);
-    } else {
-      fill(200, 0, 0);
-    }
-    textSize(min(20, width * 0.1));
-    text("CRITICAL", x, y + height/2 - 30);
+    // R key text
+    fill(0, 255, 0);
+    textSize(18);
+    text("R", x, y + 30);
   }
   
-  static drawAnimatedUFO(x, y, size) {
-    push();
-    translate(x, y);
+  /**
+   * Draw menu controls section
+   */
+  static drawMenuControls(x, y) {
+    // Menu section title
+    fill(0, 255, 255);
+    textSize(24);
+    textAlign(CENTER);
+    text("MENU", x, y);
     
-    // UFO body
-    fill(100, 100, 150);
-    ellipse(0, 0, size, size * 0.4);
+    // ESC key
+    const keySize = 40;
+    fill(50);
+    stroke(200);
+    rect(x, y + 30, keySize * 1.5, keySize, 5);
     
-    // UFO dome
-    fill(150, 200, 255, 150 + sin(frameCount * 0.1) * 100);
-    ellipse(0, -size * 0.2, size * 0.5, size * 0.4);
-    
-    // UFO lights
-    for (let i = 0; i < 3; i++) {
-      const lightOn = sin(frameCount * 0.1 + i) > 0;
-      if (lightOn) {
-        fill(255, 255, 0);
-      } else {
-        fill(100, 100, 0);
-      }
-      ellipse(-size * 0.25 + i * size * 0.25, 0, size * 0.12, size * 0.06);
-    }
-    
-    // Light beam (occasional)
-    if (sin(frameCount * 0.02) > 0.7) {
-      fill(200, 200, 255, 100);
-      triangle(-size * 0.25, size * 0.06, size * 0.25, size * 0.06, 0, size * 0.5);
-    }
-    
-    pop();
+    // ESC text
+    fill(0, 255, 0);
+    textSize(18);
+    text("ESC", x, y + 30);
   }
   
-  static drawEnemyPreview(x, y, size) {
-    push();
-    translate(x, y);
-    
-    // Enemy ship
-    fill(255, 0, 0);
-    triangle(
-      0, -size/2,
-      -size/2, size/2,
-      size/2, size/2
-    );
-    
-    // Enemy details
-    fill(200);
-    rect(0, 0, size/5, size/3);
-    fill(255, 255, 0);
-    ellipse(0, -size/5, size/5, size/5);
-    
-    pop();
-  }
-  
-  static drawScanlines() {
-    // Draw retro scanlines
-    noStroke();
-    fill(0, 0, 0, 50);
-    for (let y = 0; y < height; y += 4) {
-      rect(0, y, width, 2);
-    }
-    
-    // CRT vignette effect
-    drawingContext.shadowBlur = 0;
-    let gradient = drawingContext.createRadialGradient(
-      width/2, height/2, height/3,
-      width/2, height/2, height
-    );
-    gradient.addColorStop(0, 'rgba(0,0,0,0)');
-    gradient.addColorStop(1, 'rgba(0,0,0,0.8)');
-    drawingContext.fillStyle = gradient;
-    drawingContext.fillRect(0, 0, width, height);
-  }
-  
+  /**
+   * Handle mouse clicks on the start screen
+   */
   static handleMouseClick(mouseX, mouseY) {
-    // Calculate layout based on screen size
-    const centerX = width / 2;
-    const centerPanelWidth = min(500, width * 0.3);
-    const panelHeight = min(500, height * 0.7);
-    const panelY = height / 2 + 50;
+    console.log("Mouse clicked at:", mouseX, mouseY);
+    
+    if (this.handleColorSelection(mouseX, mouseY)) {
+      return true;
+    }
+    
+    if (this.handleStartButtonClick(mouseX, mouseY)) {
+      return true;
+    }
+    
+    return false;
+  }
+  
+  /**
+   * Handle color selection clicks
+   */
+  static handleColorSelection(mouseX, mouseY) {
+    // Calculate panel positions with proper spacing
+    const panelWidth = 350;
+    const spacing = 50;
+    const totalWidth = panelWidth * 3 + spacing * 2;
+    const startX = (width - totalWidth) / 2 + panelWidth / 2;
+    const centerX = startX + panelWidth + spacing;
     
     // Check if a color option was clicked
     const options = this.colorOptions;
-    const spacing = min(60, centerPanelWidth * 0.8 / options.length);
-    const startX = centerX - (spacing * (options.length - 1)) / 2;
-    const colorY = panelY - panelHeight/4;
+    const optionSpacing = 60;
+    const colorY = height/2 + 40; // Updated Y position
+    const optionStartX = centerX - (optionSpacing * (options.length - 1)) / 2;
     
     for (let i = 0; i < options.length; i++) {
-      const optionX = startX + i * spacing;
+      const optionX = optionStartX + i * optionSpacing;
+      const distance = dist(mouseX, mouseY, optionX, colorY);
       
-      if (dist(mouseX, mouseY, optionX, colorY) < 20) {
+      console.log(`Color option ${i} (${options[i].name}) at (${optionX}, ${colorY}), distance: ${distance}`);
+      
+      if (distance < 25) { // Reduced hit area to match smaller circles
+        console.log(`Selected color ${i}: ${options[i].name}`);
         this.selectedColorIndex = i;
         // Save color preference to localStorage
         localStorage.setItem('playerColorIndex', i.toString());
@@ -574,17 +512,40 @@ class StartScreen {
       }
     }
     
+    return false;
+  }
+  
+  /**
+   * Handle start button clicks
+   */
+  static handleStartButtonClick(mouseX, mouseY) {
+    // Calculate panel positions with proper spacing
+    const panelWidth = 350;
+    const spacing = 50;
+    const totalWidth = panelWidth * 3 + spacing * 2;
+    const startX = (width - totalWidth) / 2 + panelWidth / 2;
+    const centerX = startX + panelWidth + spacing;
+    
     // Check if start button was clicked
-    const buttonY = panelY + panelHeight/2 - 60;
+    const buttonY = height/2 + 120; // Updated Y position
+    const buttonLeft = centerX - this.buttonWidth/2;
+    const buttonRight = centerX + this.buttonWidth/2;
+    const buttonTop = buttonY - this.buttonHeight/2;
+    const buttonBottom = buttonY + this.buttonHeight/2;
+    
+    console.log("Start button bounds:", buttonLeft, buttonRight, buttonTop, buttonBottom);
+    
     if (
-      mouseX > centerX - this.buttonWidth/2 &&
-      mouseX < centerX + this.buttonWidth/2 &&
-      mouseY > buttonY - this.buttonHeight/2 &&
-      mouseY < buttonY + this.buttonHeight/2
+      mouseX > buttonLeft &&
+      mouseX < buttonRight &&
+      mouseY > buttonTop &&
+      mouseY < buttonBottom
     ) {
+      console.log("Start button clicked!");
       // Start the game with selected color
-      gameInstance.playerColor = this.colorOptions[this.selectedColorIndex].color;
-      gameInstance.gameStarted = true;
+      game.playerColor = [...this.colorOptions[this.selectedColorIndex].color];
+      game.init();
+      game.gameStarted = true;
       return true;
     }
     

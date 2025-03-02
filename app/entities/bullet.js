@@ -1,28 +1,27 @@
-// Bullet class
+// Player bullet
 class Bullet {
-  constructor(x, y, xSpeed, ySpeed, type) {
+  constructor(x, y, speed = -10) {
     this.x = x;
     this.y = y;
-    this.xSpeed = xSpeed;
-    this.ySpeed = ySpeed;
-    this.size = 5;
-    this.type = type;
+    this.speed = speed;
+    this.width = 5;
+    this.height = 10;
   }
-  
-  update() {
-    this.x += this.xSpeed;
-    this.y += this.ySpeed;
-  }
-  
+
   display() {
     push();
-    if (this.type === 'player') {
-      fill(0, 255, 255);
-    } else {
-      fill(255, 0, 0);
-    }
+    fill(255, 255, 0);
     noStroke();
-    ellipse(this.x, this.y, this.size);
+    rectMode(CENTER);
+    rect(this.x, this.y, this.width, this.height, 2);
     pop();
+  }
+
+  move() {
+    this.y += this.speed;
+  }
+
+  isOffscreen() {
+    return this.y < -this.height || this.y > height + this.height;
   }
 } 

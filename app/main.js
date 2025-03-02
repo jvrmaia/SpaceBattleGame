@@ -1,99 +1,68 @@
-// p5.js functions and main game loop
-const BORDER_SIZE = 20; // Border size in pixels
+// Main game file
+let game;
 
 function setup() {
-  // Create canvas with border
-  createCanvas(windowWidth - BORDER_SIZE * 2, windowHeight - BORDER_SIZE * 2);
-  // Position canvas with border
-  let canvas = document.querySelector('canvas');
-  if (canvas) {
-    canvas.style.margin = BORDER_SIZE + 'px';
-  }
-  
-  gameInstance = new Game();
-  gameInstance.init();
-  
-  // Initialize UFOs
-  UFOSystem.initialize();
-  
-  // Initialize start screen
+  createCanvas(windowWidth, windowHeight);
+  game = new Game();
   StartScreen.initialize();
+  console.log("Game initialized with dimensions:", width, height);
 }
 
 function draw() {
   background(0);
   
-  // If game hasn't started, show start screen
-  if (!gameInstance.gameStarted && !gameInstance.gameOver) {
+  if (!game.gameStarted) {
     StartScreen.display();
-    return;
+  } else {
+    game.display();
+    game.update();
   }
-  
-  // Draw stars
-  drawStars();
-  
-  // Update and draw planets
-  PlanetSystem.update();
-  PlanetSystem.display();
-  
-  // Update and draw UFOs
-  UFOSystem.update();
-  UFOSystem.display();
-  
-  // If player is entering name, show name input screen
-  if (gameInstance.enteringName) {
-    Screens.displayNameInput();
-    return;
-  }
-  
-  // Check if game is over
-  if (gameInstance.gameOver) {
-    // Initialize party elements if this is the first frame of game over
-    if (gameInstance.justEnded) {
-      Screens.initPartyElements();
-      gameInstance.justEnded = false;
-    }
-    Screens.displayGameOver();
-    return;
-  }
-  
-  // Update game state
-  gameInstance.update();
-  
-  // Display game elements
-  gameInstance.player.display();
-  
-  for (let enemy of gameInstance.enemies) {
-    enemy.display();
-  }
-  
-  for (let bullet of gameInstance.bullets) {
-    bullet.display();
-  }
-  
-  // Display HUD
-  HUD.display();
 }
 
 function keyPressed() {
-  InputManager.handleKeyPressed();
+  console.log("Key pressed:", keyCode);
+  
+  // Start game with Enter key
+  if (!game.gameStarted && keyCode === ENTER) {
+    console.log("Enter key pressed - starting game");
+    game.playerColor = [...StartScreen.colorOptions[StartScreen.selectedColorIndex].color];
+    game.init();
+    game.gameStarted = true;
+    return;
+  }
+  
+  if (!game.gameStarted) return;
+  
+  if (keyCode === 32 && !game.gameOver && !game.enteringName) { // Space bar
+    const bullet = game.player.fire();
+    game.bullets.push(bullet);
+  }
+  
+  if (keyCode === 82) { // R key
+    if (game.gameOver && !game.enteringName) {
+      game.init();
+    }
+  }
+  
+  if (keyCode === 27) { // ESC key
+    game.gameStarted = false;
+  }
+  
+  // Handle name entry for high scores
+  if (game.enteringName) {
+    game.handleKeyPress(key, keyCode);
+  }
 }
 
 function mousePressed() {
-  InputManager.handleMousePressed();
+  console.log("Mouse pressed at:", mouseX, mouseY);
+  
+  if (!game.gameStarted) {
+    const result = StartScreen.handleMouseClick(mouseX, mouseY);
+    console.log("Click handled with result:", result);
+  }
 }
 
 function windowResized() {
-  // Resize canvas with border
-  resizeCanvas(windowWidth - BORDER_SIZE * 2, windowHeight - BORDER_SIZE * 2);
-  // Reposition canvas
-  let canvas = document.querySelector('canvas');
-  if (canvas) {
-    canvas.style.margin = BORDER_SIZE + 'px';
-  }
-  
-  PlanetSystem.createPlanets();
-  
-  // Reinitialize UFOs on window resize
-  UFOSystem.initialize();
-} 
+  resizeCanvas(windowWidth, windowHeight);
+}

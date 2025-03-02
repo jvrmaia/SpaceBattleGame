@@ -1,48 +1,35 @@
-// LocalStorage management
+// Storage manager for high scores
 class StorageManager {
-  static loadHighScores() {
-    if (localStorage.getItem('spaceHighScores')) {
-      gameInstance.highScores = JSON.parse(localStorage.getItem('spaceHighScores'));
-    } else {
-      gameInstance.highScores = [];
+  static getHighScores() {
+    try {
+      const scores = localStorage.getItem('highScores');
+      return scores ? JSON.parse(scores) : [];
+    } catch (e) {
+      console.error('Error loading high scores:', e);
+      return [];
     }
   }
 
-  static saveHighScores() {
-    localStorage.setItem('spaceHighScores', JSON.stringify(gameInstance.highScores));
-  }
-
-  static addHighScore(newScore, nickname) {
-    gameInstance.highScores.push({
-      name: nickname || "Anonymous",
-      score: newScore
-    });
-    
-    gameInstance.highScores.sort((a, b) => b.score - a.score);
-    
-    if (gameInstance.highScores.length > gameInstance.MAX_HIGH_SCORES) {
-      gameInstance.highScores = gameInstance.highScores.slice(0, gameInstance.MAX_HIGH_SCORES);
+  static saveHighScore(name, score) {
+    try {
+      let highScores = this.getHighScores();
+      
+      // Add new score
+      highScores.push({ name, score });
+      
+      // Sort by score (highest first)
+      highScores.sort((a, b) => b.score - a.score);
+      
+      // Keep only top scores
+      highScores = highScores.slice(0, 5);
+      
+      // Save to localStorage
+      localStorage.setItem('highScores', JSON.stringify(highScores));
+      
+      return highScores;
+    } catch (e) {
+      console.error('Error saving high score:', e);
+      return [];
     }
-    
-    this.saveHighScores();
-  }
-
-  static isHighScore(newScore) {
-    if (gameInstance.highScores.length < gameInstance.MAX_HIGH_SCORES) {
-      return true;
-    }
-    
-    for (let score of gameInstance.highScores) {
-      if (newScore > score.score) {
-        return true;
-      }
-    }
-    
-    return false;
-  }
-
-  static clearHighScores() {
-    gameInstance.highScores = [];
-    this.saveHighScores();
   }
 } 

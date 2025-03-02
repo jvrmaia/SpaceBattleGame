@@ -3,7 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Space Battle Game</title>
+    <title>Space Shooter</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #000;
+        }
+        canvas {
+            display: block;
+        }
+    </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
     <!-- Utils first to ensure they're available -->
     <script src="app/utils/helpers.js"></script>
@@ -17,24 +28,23 @@
     <script src="app/entities/bullet.js"></script>
     <script src="app/entities/planet.js"></script>
     <script src="app/entities/ufo.js"></script>
+    <script src="app/entities/player.js"></script>
+    <script src="app/entities/enemy.js"></script>
     <!-- UI -->
     <script src="app/ui/hud.js"></script>
     <script src="app/ui/screens.js"></script>
     <script src="app/ui/startScreen.js"></script>
     <!-- Main -->
     <script src="app/main.js"></script>
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
-            background-color: #333; /* Dark gray background for the border */
-        }
-        canvas {
-            display: block;
-            box-shadow: 0 0 15px rgba(0, 0, 0, 0.5); /* Add shadow to canvas */
-        }
-    </style>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-0S6852S415"></script>
+    <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-0S6852S415');
+    </script>
 </head>
 <body>
 </body>
