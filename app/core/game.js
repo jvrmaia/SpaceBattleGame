@@ -6,8 +6,9 @@ class Game {
     this.enemies = [];
     this.bullets = [];
     this.stars = [];
+    this.backgroundUFOs = []; // Renamed to backgroundUFOs to clarify they're decorative
     this.score = 0;
-    this.lives = 3;
+    this.lives = 3; // Start with 3 lives
     this.gameOver = false;
     this.gameStarted = false;
     this.playerColor = [0, 255, 0]; // Default color
@@ -20,6 +21,7 @@ class Game {
     this.nameSubmitted = false; // New flag to track if name has been submitted for this match
     this.level = 1;
     this.enemySpawnRate = 0.02;
+    this.backgroundUFOSpawnRate = 0.003; // Reduced spawn rate for background UFOs
     
     // Touch control variables
     this.touchActive = false;
@@ -39,10 +41,62 @@ class Game {
     this.baseHeight = 600;
     this.scaleRatio = 1;
     
+    // Initialize stars immediately to avoid the error
+    this.initializeStars();
+    
+    // Initialize some background UFOs
+    this.initializeBackgroundUFOs();
+    
     // Initialize the game
     this.init();
     this.loadHighScores();
     this.calculateScaleRatio();
+  }
+
+  /**
+   * Initialize stars for the background
+   */
+  initializeStars() {
+    this.stars = [];
+    
+    // Create a default set of stars
+    const starCount = 100;
+    
+    for (let i = 0; i < starCount; i++) {
+      this.stars.push({
+        x: random(width),
+        y: random(height),
+        size: random(1, 3),
+        brightness: random(100, 255)
+      });
+    }
+    
+    console.log("Stars initialized:", this.stars.length);
+  }
+
+  /**
+   * Create stars for the background (used for resizing and initialization)
+   */
+  createStars() {
+    // Clear existing stars
+    this.stars = [];
+    
+    // Calculate number of stars based on screen area
+    const screenArea = width * height;
+    const baseArea = this.baseWidth * this.baseHeight;
+    const starCount = Math.floor((screenArea / baseArea) * 100);
+    
+    // Create stars
+    for (let i = 0; i < starCount; i++) {
+      this.stars.push({
+        x: random(width),
+        y: random(height),
+        size: random(1, 3),
+        brightness: random(100, 255)
+      });
+    }
+    
+    console.log("Stars created:", this.stars.length);
   }
 
   calculateScaleRatio() {
@@ -66,44 +120,39 @@ class Game {
     }
     
     // Regenerate stars for the new screen size
-    this.initStars();
+    this.createStars();
   }
 
   init() {
-    console.log("Initializing game with color:", this.playerColor);
-    // Initialize player with the selected color
-    this.player = new Player(width / 2, height - 100, this.playerColor);
-    
-    // Clear existing enemies and bullets
-    this.enemies = [];
-    this.bullets = [];
-    
-    // Reset game state
-    this.score = 0;
-    this.lives = 3;
-    this.gameOver = false;
-    this.enteringName = false;
-    this.justEnded = false;
-    this.showingScoreboard = false; // Reset scoreboard flag
-    this.level = 1;
-    this.enemySpawnRate = 0.02;
-    
-    // Initialize stars
-    this.initStars();
-  }
-
-  initStars() {
-    this.stars = [];
-    const starCount = Math.floor(100 * (width * height) / (this.baseWidth * this.baseHeight));
-    
-    for (let i = 0; i < starCount; i++) {
-      this.stars.push({
-        x: random(width),
-        y: random(height),
-        size: random(1, 3),
-        brightness: random(100, 255),
-        speed: random(0.5, 2)
-      });
+    try {
+      // Create player
+      if (typeof Player === 'undefined') {
+        console.error("Player class is not defined. Creating inline player.");
+        this.createInlinePlayer();
+      } else {
+        this.player = new Player(width / 2, height - 100, this.playerColor);
+      }
+      
+      // Reset game state
+      this.enemies = [];
+      this.bullets = [];
+      // Don't reset background UFOs, they're decorative
+      this.score = 0;
+      this.lives = 3; // Reset to 3 lives
+      this.gameOver = false;
+      this.level = 1;
+      this.enemySpawnRate = 0.02;
+      
+      // Create stars
+      try {
+        this.createStars();
+      } catch (e) {
+        console.error("Error creating stars:", e);
+        // Fallback to initialize stars
+        this.initializeStars();
+      }
+    } catch (e) {
+      console.error("Error initializing game:", e);
     }
   }
 
@@ -126,22 +175,25 @@ class Game {
   }
 
   update() {
-    if (this.gameOver) {
-      if (this.justEnded) {
-        this.justEnded = false;
-        this.enteringName = true;
-        this.playerName = "";
+    if (this.gameOver) return;
+    
+    // Update player if it exists and has update method
+    if (this.player) {
+      try {
+        this.player.update();
+        
+        // Ensure player stays within screen bounds
+        if (this.player.x !== undefined && this.player.y !== undefined) {
+          this.player.x = constrain(this.player.x, this.player.width / 2, width - this.player.width / 2);
+          this.player.y = constrain(this.player.y, this.player.height / 2, height - this.player.height / 2);
+        }
+      } catch (e) {
+        console.error("Error updating player:", e);
       }
-      return;
     }
     
-    if (this.enteringName) return;
-    
-    // Handle player movement
-    if (keyIsDown(LEFT_ARROW)) this.player.move('left');
-    if (keyIsDown(RIGHT_ARROW)) this.player.move('right');
-    if (keyIsDown(UP_ARROW)) this.player.move('up');
-    if (keyIsDown(DOWN_ARROW)) this.player.move('down');
+    // Handle touch controls
+    this.handleTouchControls();
     
     // Move stars
     for (let star of this.stars) {
@@ -152,85 +204,125 @@ class Game {
       }
     }
     
-    // Spawn enemies
-    if (random() < this.enemySpawnRate) {
-      const enemy = new Enemy(random(width), -20);
-      this.enemies.push(enemy);
-    }
-    
-    // Increase difficulty over time
-    if (frameCount % 1000 === 0) {
-      this.level++;
-      this.enemySpawnRate = min(0.1, this.enemySpawnRate + 0.01);
+    // Update bullets
+    for (let i = this.bullets.length - 1; i >= 0; i--) {
+      this.bullets[i].update();
+      
+      // Remove inactive bullets
+      if (!this.bullets[i].active) {
+        this.bullets.splice(i, 1);
+      }
     }
     
     // Update enemies
     for (let i = this.enemies.length - 1; i >= 0; i--) {
       const enemy = this.enemies[i];
+      enemy.update();
       
-      enemy.move();
-      
-      // Check if enemy is offscreen
-      if (enemy.isOffscreen()) {
-        this.enemies.splice(i, 1);
-        continue;
-      }
-      
-      // Check for collision with player
-      if (this.player.hits(enemy)) {
-        this.lives--;
-        this.enemies.splice(i, 1);
+      // Check for collision with player using simple distance check
+      if (this.player && !this.player.invincible) {
+        const dx = enemy.x - this.player.x;
+        const dy = enemy.y - this.player.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        const minDistance = (enemy.width + this.player.width) / 2;
         
-        if (this.lives <= 0) {
-          this.gameOver = true;
-          this.justEnded = true;
+        if (distance < minDistance) {
+          this.handlePlayerHit();
+          enemy.active = false;
         }
-        
-        continue;
       }
       
       // Check for collision with bullets
       for (let j = this.bullets.length - 1; j >= 0; j--) {
         const bullet = this.bullets[j];
+        const dx = enemy.x - bullet.x;
+        const dy = enemy.y - bullet.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        const minDistance = (enemy.width + bullet.width) / 2;
         
-        if (enemy.hits(bullet)) {
-          this.score += 100;
-          this.enemies.splice(i, 1);
-          this.bullets.splice(j, 1);
+        if (distance < minDistance) {
+          this.score += 10;
+          enemy.active = false;
+          bullet.active = false;
           break;
         }
       }
+      
+      // Remove inactive enemies
+      if (!enemy.active) {
+        this.enemies.splice(i, 1);
+      }
     }
     
-    // Update bullets
-    for (let i = this.bullets.length - 1; i >= 0; i--) {
-      const bullet = this.bullets[i];
+    // Update background UFOs (purely decorative)
+    for (let i = this.backgroundUFOs.length - 1; i >= 0; i--) {
+      const ufo = this.backgroundUFOs[i];
+      ufo.update();
       
-      bullet.update();
-      
-      if (!bullet.active) {
-        this.bullets.splice(i, 1);
+      // Remove UFOs that have gone off screen
+      if (ufo.x < -100 || ufo.x > width + 100) {
+        this.backgroundUFOs.splice(i, 1);
       }
+    }
+    
+    // Spawn enemies
+    if (random() < this.enemySpawnRate) {
+      this.spawnEnemy();
+    }
+    
+    // Spawn background UFOs (decorative)
+    if (random() < this.backgroundUFOSpawnRate) {
+      this.spawnBackgroundUFO();
+    }
+    
+    // Increase difficulty over time
+    if (frameCount % 600 === 0) { // Every 10 seconds at 60fps
+      this.level++;
+      this.enemySpawnRate = min(this.enemySpawnRate * 1.2, 0.1);
     }
   }
 
   display() {
-    background(0);
-    
     push();
     
-    // Apply scaling for responsive design
-    // scale(this.scaleRatio);
+    // Clear background
+    background(0);
     
     // Draw stars
     for (const star of this.stars) {
-      fill(255, star.brightness);
+      fill(star.brightness);
       noStroke();
-      ellipse(star.x, star.y, star.size);
+      ellipse(star.x, star.y, star.size, star.size);
     }
     
-    // Draw player
-    this.player.display();
+    // Draw background UFOs (behind everything else)
+    for (const ufo of this.backgroundUFOs) {
+      ufo.display();
+    }
+    
+    // Draw player if it exists and has display method
+    if (this.player) {
+      try {
+        // Ensure player is within bounds before displaying
+        if (this.player.x !== undefined && this.player.y !== undefined) {
+          if (this.player.x < 0 || this.player.x > width || 
+              this.player.y < 0 || this.player.y > height) {
+            console.warn("Player out of bounds, resetting position");
+            this.player.x = width / 2;
+            this.player.y = height - 100;
+          }
+          
+          // Set visibility flag if it doesn't exist
+          if (this.player.visible === undefined) {
+            this.player.visible = true;
+          }
+          
+          this.player.display();
+        }
+      } catch (e) {
+        console.error("Error displaying player:", e);
+      }
+    }
     
     // Draw enemies
     for (const enemy of this.enemies) {
@@ -242,7 +334,7 @@ class Game {
       bullet.display();
     }
     
-    // Display score and lives
+    // Display score and level
     this.displayHUD();
     
     // Display touch controls if active
@@ -263,30 +355,57 @@ class Game {
     fill(255);
     textSize(24);
     textAlign(LEFT);
-    text(`SCORE: ${this.score.toString().padStart(6, '0')}`, 20, 30);
-    
-    // Lives display
-    textAlign(RIGHT);
-    text(`LIVES: ${this.lives}`, width - 20, 30);
+    text(`SCORE: ${this.score}`, 20, 30);
     
     // Level display
     textAlign(CENTER);
     text(`LEVEL: ${this.level}`, width / 2, 30);
     
+    // Lives display with hearts
+    textAlign(RIGHT);
+    text("LIVES:", width - 150, 30);
+    
+    // Draw hearts based on lives
+    const heartSize = 20;
+    const heartSpacing = 30;
+    const startX = width - 120;
+    
+    for (let i = 0; i < this.lives; i++) {
+      this.drawHeart(startX + i * heartSpacing, 25, heartSize, this.playerColor);
+    }
+    
     pop();
   }
   
-  drawHeart(x, y, size) {
+  /**
+   * Draw a heart shape
+   */
+  drawHeart(x, y, size, color) {
     push();
-    translate(x, y);
     
-    fill(255, 0, 0);
+    // Heart shape
+    fill(color[0], color[1], color[2]);
     noStroke();
     
+    // Add glow effect
+    drawingContext.shadowBlur = 10;
+    drawingContext.shadowColor = `rgba(${color[0]}, ${color[1]}, ${color[2]}, 0.5)`;
+    
+    // Draw heart using bezier curves
     beginShape();
-    vertex(0, -size/4);
-    bezierVertex(size/2, -size, size, -size/4, 0, size/2);
-    bezierVertex(-size, -size/4, -size/2, -size, 0, -size/4);
+    // Left half of heart
+    vertex(x, y + size * 0.3);
+    bezierVertex(
+      x - size * 0.5, y - size * 0.3, 
+      x - size * 0.3, y - size * 0.8, 
+      x, y - size * 0.5
+    );
+    // Right half of heart
+    bezierVertex(
+      x + size * 0.3, y - size * 0.8, 
+      x + size * 0.5, y - size * 0.3, 
+      x, y + size * 0.3
+    );
     endShape(CLOSE);
     
     pop();
@@ -819,22 +938,38 @@ class Game {
   }
 
   /**
-   * Game over state
+   * Handle player being hit
+   */
+  handlePlayerHit() {
+    this.lives--;
+    
+    if (this.lives <= 0) {
+      this.endGame();
+    } else {
+      // Make player invincible briefly
+      if (this.player && typeof this.player.makeInvincible === 'function') {
+        this.player.makeInvincible();
+      } else if (this.player) {
+        // Fallback if makeInvincible doesn't exist
+        this.player.invincible = true;
+        this.player.invincibleTimer = 120; // 2 seconds at 60fps
+      }
+    }
+  }
+
+  /**
+   * End the game
    */
   endGame() {
     this.gameOver = true;
+    this.justEnded = true;
     
-    // Only prompt for name entry if it's a high score and name hasn't been submitted yet
-    this.enteringName = this.isHighScore() && !this.nameSubmitted;
-    
-    this.showingScoreboard = false;
-    
-    // Only reset player name if we haven't submitted a name yet
-    if (!this.nameSubmitted) {
-      this.playerName = "";
+    // Check if score is a high score
+    if (this.isHighScore()) {
+      this.enteringName = true;
     }
     
-    console.log("Game over. High score?", this.enteringName, "Name submitted?", this.nameSubmitted);
+    console.log("Game over! Score:", this.score);
   }
   
   /**
@@ -847,6 +982,303 @@ class Game {
     this.justEnded = false;
     this.showingScoreboard = false;
     this.nameSubmitted = false; // Reset name submitted flag for new match
+  }
+
+  /**
+   * Spawn a new enemy
+   */
+  spawnEnemy() {
+    const x = random(width);
+    const y = -30;
+    
+    const enemy = {
+      x: x,
+      y: y,
+      width: 30,
+      height: 30,
+      speed: random(1, 3 + this.level * 0.5),
+      active: true,
+      
+      update: function() {
+        this.y += this.speed;
+        
+        // Deactivate if off screen
+        if (this.y > height + 50) {
+          this.active = false;
+        }
+      },
+      
+      display: function() {
+        push();
+        
+        // Enemy body
+        fill(255, 0, 0);
+        noStroke();
+        
+        // Add glow effect
+        drawingContext.shadowBlur = 10;
+        drawingContext.shadowColor = 'rgba(255, 0, 0, 0.5)';
+        
+        // Draw enemy (alien shape)
+        beginShape();
+        vertex(this.x, this.y - this.height/2); // Top
+        vertex(this.x - this.width/2, this.y); // Left
+        vertex(this.x - this.width/3, this.y + this.height/3); // Bottom left
+        vertex(this.x + this.width/3, this.y + this.height/3); // Bottom right
+        vertex(this.x + this.width/2, this.y); // Right
+        endShape(CLOSE);
+        
+        // Draw eyes
+        fill(255);
+        ellipse(this.x - this.width/5, this.y - this.height/6, 8, 8);
+        ellipse(this.x + this.width/5, this.y - this.height/6, 8, 8);
+        
+        // Draw pupils
+        fill(0);
+        ellipse(this.x - this.width/5, this.y - this.height/6, 4, 4);
+        ellipse(this.x + this.width/5, this.y - this.height/6, 4, 4);
+        
+        pop();
+      }
+    };
+    
+    this.enemies.push(enemy);
+  }
+  
+  /**
+   * Spawn a background UFO (decorative only)
+   */
+  spawnBackgroundUFO() {
+    // Determine if UFO comes from left or right
+    const fromLeft = random() > 0.5;
+    const x = fromLeft ? -50 : width + 50;
+    const y = random(50, height/3); // Only in top third of screen
+    
+    const ufo = {
+      x: x,
+      y: y,
+      width: 60,
+      height: 30,
+      speedX: (fromLeft ? 1 : -1) * random(0.5, 2),
+      speedY: 0,
+      color: [100, 100, 200],
+      blinkTimer: 0,
+      blinkState: false,
+      
+      update: function() {
+        // Move horizontally
+        this.x += this.speedX;
+        
+        // Add slight vertical wave motion
+        this.speedY = sin(frameCount * 0.05) * 0.5;
+        this.y += this.speedY;
+        
+        // Update blink timer
+        this.blinkTimer++;
+        if (this.blinkTimer > 10) {
+          this.blinkTimer = 0;
+          this.blinkState = !this.blinkState;
+        }
+      },
+      
+      display: function() {
+        push();
+        
+        // UFO body
+        fill(this.color);
+        noStroke();
+        ellipse(this.x, this.y, this.width, this.height);
+        
+        // UFO dome
+        fill(150, 200, 255);
+        ellipse(this.x, this.y - this.height/4, this.width/2, this.height/2);
+        
+        // UFO lights
+        if (this.blinkState) {
+          fill(255, 0, 0);
+        } else {
+          fill(0, 255, 255);
+        }
+        
+        ellipse(this.x - this.width/3, this.y, 8, 8);
+        ellipse(this.x, this.y + this.height/4, 8, 8);
+        ellipse(this.x + this.width/3, this.y, 8, 8);
+        
+        // Add glow effect
+        drawingContext.shadowBlur = 15;
+        drawingContext.shadowColor = this.blinkState ? 'rgba(255, 0, 0, 0.5)' : 'rgba(0, 255, 255, 0.5)';
+        
+        pop();
+      }
+    };
+    
+    this.backgroundUFOs.push(ufo);
+  }
+
+  /**
+   * Create an inline player object if Player class is not available
+   */
+  createInlinePlayer() {
+    this.player = {
+      x: width / 2,
+      y: height - 100,
+      width: 40,
+      height: 40,
+      speed: 5,
+      color: this.playerColor,
+      thrusterAnimation: 0,
+      invincible: false,
+      invincibleTimer: 0,
+      invincibleDuration: 120,
+      
+      update: function() {
+        // Handle keyboard input
+        if (keyIsDown(LEFT_ARROW) || keyIsDown(65)) { // Left arrow or A
+          this.x -= this.speed;
+        }
+        if (keyIsDown(RIGHT_ARROW) || keyIsDown(68)) { // Right arrow or D
+          this.x += this.speed;
+        }
+        if (keyIsDown(UP_ARROW) || keyIsDown(87)) { // Up arrow or W
+          this.y -= this.speed;
+        }
+        if (keyIsDown(DOWN_ARROW) || keyIsDown(83)) { // Down arrow or S
+          this.y += this.speed;
+        }
+        
+        // Update thruster animation
+        this.thrusterAnimation = (this.thrusterAnimation + 0.2) % 1;
+        
+        // Update invincibility timer
+        if (this.invincible) {
+          this.invincibleTimer--;
+          if (this.invincibleTimer <= 0) {
+            this.invincible = false;
+          }
+        }
+      },
+      
+      move: function(dx, dy) {
+        this.x += dx * this.speed;
+        this.y += dy * this.speed;
+      },
+      
+      makeInvincible: function() {
+        this.invincible = true;
+        this.invincibleTimer = this.invincibleDuration;
+      },
+      
+      display: function() {
+        push();
+        
+        // Skip drawing every few frames if invincible (blinking effect)
+        if (this.invincible && frameCount % 6 < 3) {
+          pop();
+          return;
+        }
+        
+        // Ship body
+        fill(this.color);
+        noStroke();
+        
+        // Add glow effect
+        drawingContext.shadowBlur = 20;
+        drawingContext.shadowColor = `rgba(${this.color[0]}, ${this.color[1]}, ${this.color[2]}, 0.5)`;
+        
+        // Draw ship body (triangle)
+        beginShape();
+        vertex(this.x, this.y - this.height/2);
+        vertex(this.x - this.width/2, this.y + this.height/2);
+        vertex(this.x + this.width/2, this.y + this.height/2);
+        endShape(CLOSE);
+        
+        // Draw cockpit
+        fill(200, 200, 255);
+        ellipse(this.x, this.y, this.width/3, this.height/3);
+        
+        // Draw thrusters with animation
+        fill(255, 100 + sin(this.thrusterAnimation * TWO_PI) * 155, 0);
+        
+        // Left thruster
+        rect(this.x - this.width/4, this.y + this.height/2, 
+             this.width/6, this.height/4 + sin(this.thrusterAnimation * TWO_PI) * 5);
+        
+        // Right thruster
+        rect(this.x + this.width/4, this.y + this.height/2, 
+             this.width/6, this.height/4 + cos(this.thrusterAnimation * TWO_PI) * 5);
+        
+        pop();
+      },
+      
+      collidesWith: function(entity) {
+        // Skip collision check if invincible
+        if (this.invincible) {
+          return false;
+        }
+        
+        // Simple rectangular collision detection
+        return (
+          this.x - this.width/2 < entity.x + entity.width/2 &&
+          this.x + this.width/2 > entity.x - entity.width/2 &&
+          this.y - this.height/2 < entity.y + entity.height/2 &&
+          this.y + this.height/2 > entity.y - entity.height/2
+        );
+      }
+    };
+  }
+
+  /**
+   * Handle touch controls
+   */
+  handleTouchControls() {
+    if (!this.touchActive || !this.player) return;
+    
+    if (this.joystickActive) {
+      // Calculate joystick direction
+      const dx = this.joystickX - this.joystickBaseX;
+      const dy = this.joystickY - this.joystickBaseY;
+      
+      // Normalize direction
+      const length = Math.sqrt(dx * dx + dy * dy);
+      if (length > 0) {
+        const normalizedDx = dx / length;
+        const normalizedDy = dy / length;
+        
+        // Move player based on joystick direction
+        try {
+          if (typeof this.player.move === 'function') {
+            this.player.move(normalizedDx, normalizedDy);
+          } else {
+            // Fallback to direct position update
+            this.player.x += normalizedDx * (this.player.speed || 5);
+            this.player.y += normalizedDy * (this.player.speed || 5);
+          }
+          
+          // Ensure player stays within screen bounds
+          this.player.x = constrain(this.player.x, this.player.width / 2, width - this.player.width / 2);
+          this.player.y = constrain(this.player.y, this.player.height / 2, height - this.player.height / 2);
+        } catch (e) {
+          console.error("Error moving player:", e);
+        }
+      }
+      
+      // Auto-fire if enough time has passed
+      const currentTime = millis();
+      if (currentTime - this.lastTouchTime > this.touchFireThreshold) {
+        this.fireBullet();
+        this.lastTouchTime = currentTime;
+      }
+    }
+  }
+
+  /**
+   * Initialize some background UFOs
+   */
+  initializeBackgroundUFOs() {
+    // Start with a few UFOs in the background
+    for (let i = 0; i < 2; i++) {
+      this.spawnBackgroundUFO();
+    }
   }
 }
 

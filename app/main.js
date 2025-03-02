@@ -29,6 +29,12 @@ function windowResized() {
 }
 
 function draw() {
+  // Make sure game is defined before accessing properties
+  if (!game) {
+    console.error("Game object is not initialized");
+    return;
+  }
+  
   if (!game.gameStarted) {
     StartScreen.display();
   } else {
