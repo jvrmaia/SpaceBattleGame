@@ -288,74 +288,159 @@ class Game {
     stroke(255, 0, 0);
     strokeWeight(3);
     rectMode(CENTER);
-    rect(panelX, panelY, panelWidth, panelHeight, 15);
+    rect(panelX, panelY, panelWidth, panelHeight, 20);
     
-    // Game over text
-    fill(255, 0, 0);
-    textSize(48);
-    textFont('Courier New');
+    // Draw neon "GAME OVER" title
+    this.drawNeonGameOverTitle(panelX, panelY - 180);
+    
+    // Score display
+    fill(255);
+    textSize(30);
     textAlign(CENTER);
-    text("GAME OVER", width/2, panelY + 60);
+    text(`SCORE: ${this.score.toString().padStart(6, '0')}`, panelX, panelY - 100);
     
-    // Final score
-    fill(0, 255, 0);
-    textSize(32);
-    text(`SCORE: ${this.score.toString().padStart(6, '0')}`, width/2, panelY + 120);
+    // High score check
+    const isHighScore = this.isHighScore();
     
     if (this.enteringName) {
-      // Name entry prompt
+      // Name entry
       fill(255);
       textSize(24);
-      text("ENTER YOUR NAME:", width/2, panelY + 180);
+      textAlign(CENTER);
+      text("NEW HIGH SCORE!", panelX, panelY - 50);
+      text("ENTER YOUR NAME:", panelX, panelY);
       
-      // Name input box
+      // Name input field
       fill(0);
       stroke(0, 255, 0);
       strokeWeight(2);
-      rectMode(CENTER);
-      rect(width/2, panelY + 240, 300, 40);
+      rect(panelX, panelY + 50, 300, 50, 5);
       
-      // Entered name with blinking cursor
+      // Entered name
       fill(0, 255, 0);
+      textSize(24);
       textAlign(CENTER);
-      const displayName = this.playerName + (frameCount % 30 < 15 ? "_" : "");
-      text(displayName, width/2, panelY + 247);
+      text(this.playerName + (frameCount % 60 < 30 ? "_" : ""), panelX, panelY + 50);
       
       // Instructions
       fill(255);
-      textAlign(CENTER);
-      textSize(16);
-      text("TYPE YOUR NAME AND PRESS ENTER", width/2, panelY + 280);
+      textSize(18);
+      text("PRESS ENTER TO SUBMIT", panelX, panelY + 100);
+    } else if (isHighScore && !this.justEnded) {
+      // Prompt to enter name
+      this.enteringName = true;
     } else {
-      // High scores title
-      fill(255, 255, 0);
-      textSize(32);
-      textAlign(CENTER);
-      text("HIGH SCORES", width/2, panelY + 180);
-      
-      // High scores list
-      fill(255);
+      // Display high scores
+      fill(0, 255, 0);
       textSize(24);
       textAlign(CENTER);
+      text("HIGH SCORES", panelX, panelY - 50);
       
-      // Table header
-      fill(0, 255, 0);
-      text("RANK   NAME          SCORE", width/2, panelY + 220);
-      
-      // High scores
-      fill(255);
-      for (let i = 0; i < this.MAX_HIGH_SCORES; i++) {
-        const score = i < this.highScores.length ? this.highScores[i] : { name: "---", score: 0 };
-        const scoreText = `${(i + 1).toString().padStart(2, ' ')}     ${score.name.padEnd(10, ' ')}   ${score.score.toString().padStart(6, '0')}`;
-        text(scoreText, width/2, panelY + 250 + i * 40);
+      // High scores list
+      textSize(20);
+      for (let i = 0; i < Math.min(this.highScores.length, 5); i++) {
+        const score = this.highScores[i];
+        const yPos = panelY + (i * 40);
+        
+        // Highlight the player's new score
+        if (this.justEnded && score.name === this.playerName && score.score === this.score) {
+          fill(255, 255, 0);
+        } else {
+          fill(0, 150, 255);
+        }
+        
+        textAlign(LEFT);
+        text(`${i + 1}.`, panelX - 120, yPos);
+        text(score.name, panelX - 80, yPos);
+        
+        textAlign(RIGHT);
+        text(score.score.toString().padStart(6, '0'), panelX + 120, yPos);
       }
+      
+      // Draw a separator line
+      stroke(0, 100, 255);
+      strokeWeight(2);
+      line(panelX - 150, panelY + 140, panelX + 150, panelY + 140);
+      
+      // Restart and menu instructions in a box
+      fill(0, 0, 30);
+      stroke(0, 100, 255);
+      strokeWeight(2);
+      rectMode(CENTER);
+      rect(panelX, panelY + 180, 300, 80, 10);
+      
+      // Restart instructions
+      fill(255);
+      textSize(20);
+      textAlign(CENTER);
+      text("PRESS 'R' TO RESTART", panelX, panelY + 170);
+      text("PRESS 'ESC' FOR MENU", panelX, panelY + 200);
     }
     
-    // Restart instructions
-    fill(255);
-    textSize(20);
+    pop();
+  }
+  
+  /**
+   * Draw the game over title with neon effect
+   */
+  drawNeonGameOverTitle(x, y) {
+    push();
+    
+    // Calculate animation values
+    const pulseRate = 0.05;
+    const flickerRate = 0.2;
+    const baseGlow = 15;
+    const maxGlow = 25;
+    
+    // Pulse effect (smooth sine wave)
+    const pulse = sin(frameCount * pulseRate) * 0.5 + 0.5;
+    
+    // Random flicker effect (occasional dimming)
+    const flicker = random() > 0.95 ? random(0.7, 0.9) : 1;
+    
+    // Calculate current glow amount
+    const glowAmount = baseGlow + pulse * (maxGlow - baseGlow);
+    
+    // Calculate color values with animation
+    const r = 255 * pulse * flicker;
+    const g = 50 * pulse * flicker;
+    const b = 50 * pulse * flicker;
+    
+    // Draw multiple layers for the neon effect
+    
+    // Outer glow (largest)
+    drawingContext.shadowBlur = glowAmount * 2;
+    drawingContext.shadowColor = `rgba(255, 0, 0, ${0.3 * flicker})`;
+    fill(0, 0, 0, 0); // Transparent fill
+    stroke(255, 0, 0, 50 * flicker);
+    strokeWeight(12);
+    textSize(60);
     textAlign(CENTER);
-    text("PRESS R TO RESTART", width/2, panelY + panelHeight - 40);
+    textFont('Arial Black');
+    text("GAME OVER", x, y);
+    
+    // Middle glow
+    drawingContext.shadowBlur = glowAmount * 1.5;
+    drawingContext.shadowColor = `rgba(255, 50, 50, ${0.5 * flicker})`;
+    stroke(255, 50, 50, 100 * flicker);
+    strokeWeight(8);
+    text("GAME OVER", x, y);
+    
+    // Inner glow
+    drawingContext.shadowBlur = glowAmount;
+    drawingContext.shadowColor = `rgba(${r}, ${g}, ${b}, ${0.8 * flicker})`;
+    stroke(r, g, b, 200 * flicker);
+    strokeWeight(4);
+    text("GAME OVER", x, y);
+    
+    // Core text
+    fill(255, 255, 255, 255 * flicker);
+    stroke(r, g, b, 255 * flicker);
+    strokeWeight(2);
+    text("GAME OVER", x, y);
+    
+    // Reset shadow
+    drawingContext.shadowBlur = 0;
     
     pop();
   }
@@ -377,6 +462,20 @@ class Game {
         }
       }
     }
+  }
+
+  isHighScore() {
+    if (this.highScores.length < this.MAX_HIGH_SCORES) {
+      return true;
+    }
+    
+    for (let i = 0; i < this.highScores.length; i++) {
+      if (this.score > this.highScores[i].score) {
+        return true;
+      }
+    }
+    
+    return false;
   }
 }
 
