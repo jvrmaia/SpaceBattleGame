@@ -350,7 +350,28 @@ class Game {
         }
         
         textAlign(LEFT);
-        text(`${i + 1}.`, panelX - 120, yPos);
+        
+        // Draw trophy or medal emoji for top 3 positions
+        if (i === 0) {
+          // Trophy for 1st place
+          textSize(24);
+          text("🏆", panelX - 130, yPos);
+          textSize(20);
+        } else if (i === 1) {
+          // Silver medal for 2nd place
+          textSize(24);
+          text("🥈", panelX - 130, yPos);
+          textSize(20);
+        } else if (i === 2) {
+          // Bronze medal for 3rd place
+          textSize(24);
+          text("🥉", panelX - 130, yPos);
+          textSize(20);
+        } else {
+          // Regular number for other positions
+          text(`${i + 1}.`, panelX - 120, yPos);
+        }
+        
         text(score.name, panelX - 80, yPos);
         
         textAlign(RIGHT);
