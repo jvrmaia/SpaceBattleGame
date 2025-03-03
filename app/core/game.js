@@ -575,17 +575,12 @@ class Game {
         text(score.score.toString().padStart(6, '0'), panelX + 120, yPos);
       }
       
-      // Draw a separator line
-      stroke(0, 100, 255);
-      strokeWeight(2);
-      line(panelX - 150, panelY + 80, panelX + 150, panelY + 80);
-      
       // Restart and menu instructions in a box
       fill(0, 0, 30);
       stroke(0, 100, 255);
       strokeWeight(2);
       rectMode(CENTER);
-      rect(panelX, panelY + 140, 300, 80, 10);
+      rect(panelX, panelY + 150, 300, 80, 10);
       
       // Restart instructions
       fill(255);
