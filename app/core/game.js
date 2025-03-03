@@ -1,7 +1,6 @@
 // Game state and core logic
 class Game {
   constructor() {
-    console.log("Game constructor called");
     this.player = null;
     this.enemies = [];
     this.bullets = [];
@@ -14,15 +13,15 @@ class Game {
     this.gameStarted = false;
     this.playerColor = [0, 255, 0]; // Default color
     this.highScores = [];
-    this.MAX_HIGH_SCORES = 5; // Keep storing 5 scores, but only display top 3
+    this.MAX_HIGH_SCORES = 5;
     this.playerName = "";
     this.enteringName = false;
     this.justEnded = false;
-    this.showingScoreboard = false; // New flag to track scoreboard display
-    this.nameSubmitted = false; // New flag to track if name has been submitted for this match
+    this.showingScoreboard = false;
+    this.nameSubmitted = false;
     this.level = 1;
     this.enemySpawnRate = 0.02;
-    this.backgroundUFOSpawnRate = 0.003; // Reduced spawn rate for background UFOs
+    this.backgroundUFOSpawnRate = 0.003;
     this.planetSpawnRate = 0.0005; // Very low spawn rate for planets
     
     // Touch control variables
@@ -56,6 +55,69 @@ class Game {
     this.init();
     this.loadHighScores();
     this.calculateScaleRatio();
+  }
+
+  initializeProperties() {
+    // Core game state
+    this.score = 0;
+    this.lives = 3;
+    this.level = 1;
+    this.gameOver = false;
+    this.gameStarted = false;
+    this.justEnded = false;
+    
+    // Player settings
+    this.playerColor = [0, 255, 0]; // Default color
+    this.player = null;
+    
+    // Game entities
+    this.enemies = [];
+    this.bullets = [];
+    this.stars = [];
+    this.backgroundUFOs = []; // Decorative UFOs
+    this.planets = []; // Background planets
+    
+    // Spawn rates
+    this.enemySpawnRate = 0.02;
+    this.backgroundUFOSpawnRate = 0.003;
+    this.planetSpawnRate = 0.0005;
+    
+    // High score tracking
+    this.highScores = [];
+    this.MAX_HIGH_SCORES = 5;
+    this.playerName = "";
+    this.enteringName = false;
+    this.showingScoreboard = false;
+    this.nameSubmitted = false;
+    
+    // Touch control variables
+    this.initializeTouchControls();
+    
+    // Screen size variables
+    this.baseWidth = 800;
+    this.baseHeight = 600;
+    this.scaleRatio = 1;
+  }
+
+  initializeTouchControls() {
+    this.touchActive = false;
+    this.touchX = 0;
+    this.touchY = 0;
+    this.lastTouchTime = 0;
+    this.touchFireThreshold = 300; // ms between shots
+    this.virtualJoystickRadius = 50;
+    this.joystickActive = false;
+    this.joystickBaseX = 0;
+    this.joystickBaseY = 0;
+    this.joystickX = 0;
+    this.joystickY = 0;
+  }
+
+  initializeGameElements() {
+    this.initializeStars();
+    this.initializeBackgroundUFOs();
+    this.initializePlanets();
+    this.init();
   }
 
   /**
@@ -130,35 +192,31 @@ class Game {
 
   init() {
     try {
-      // Create player
-      if (typeof Player === 'undefined') {
-        console.error("Player class is not defined. Creating inline player.");
-        this.createInlinePlayer();
-      } else {
-        this.player = new Player(width / 2, height - 100, this.playerColor);
-      }
-      
-      // Reset game state
-      this.enemies = [];
-      this.bullets = [];
-      // Don't reset background UFOs, they're decorative
-      this.score = 0;
-      this.lives = 3; // Reset to 3 lives
-      this.gameOver = false;
-      this.level = 1;
-      this.enemySpawnRate = 0.02;
-      
-      // Create stars
-      try {
-        this.createStars();
-      } catch (e) {
-        console.error("Error creating stars:", e);
-        // Fallback to initialize stars
-        this.initializeStars();
-      }
+      this.createPlayer();
+      this.resetGameState();
+      this.createStars();
     } catch (e) {
       console.error("Error initializing game:", e);
     }
+  }
+
+  createPlayer() {
+    if (typeof Player === 'undefined') {
+      console.error("Player class is not defined. Creating inline player.");
+      this.createInlinePlayer();
+    } else {
+      this.player = new Player(width / 2, height - 100, this.playerColor);
+    }
+  }
+
+  resetGameState() {
+    this.enemies = [];
+    this.bullets = [];
+    this.score = 0;
+    this.lives = 3;
+    this.gameOver = false;
+    this.level = 1;
+    this.enemySpawnRate = 0.02;
   }
 
   loadHighScores() {
@@ -200,15 +258,6 @@ class Game {
     // Handle touch controls
     this.handleTouchControls();
     
-    // Move stars
-    for (let star of this.stars) {
-      star.y += star.speed;
-      if (star.y > height) {
-        star.y = 0;
-        star.x = random(width);
-      }
-    }
-    
     // Update bullets
     for (let i = this.bullets.length - 1; i >= 0; i--) {
       this.bullets[i].update();
@@ -226,9 +275,9 @@ class Game {
       
       // Check for collision with player using simple distance check
       if (this.player && !this.player.invincible) {
-        const dx = enemy.x - this.player.x;
-        const dy = enemy.y - this.player.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
+        const distX = enemy.x - this.player.x;
+        const distY = enemy.y - this.player.y;
+        const distance = Math.sqrt(distX * distX + distY * distY);
         const minDistance = (enemy.width + this.player.width) / 2;
         
         if (distance < minDistance) {
@@ -240,12 +289,12 @@ class Game {
       // Check for collision with bullets
       for (let j = this.bullets.length - 1; j >= 0; j--) {
         const bullet = this.bullets[j];
-        const dx = enemy.x - bullet.x;
-        const dy = enemy.y - bullet.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        const minDistance = (enemy.width + bullet.width) / 2;
+        const bulletDistX = enemy.x - bullet.x;
+        const bulletDistY = enemy.y - bullet.y;
+        const bulletDistance = Math.sqrt(bulletDistX * bulletDistX + bulletDistY * bulletDistY);
+        const bulletMinDistance = (enemy.width + bullet.width) / 2;
         
-        if (distance < minDistance) {
+        if (bulletDistance < bulletMinDistance) {
           this.score += 10;
           enemy.active = false;
           bullet.active = false;
@@ -304,6 +353,17 @@ class Game {
   }
 
   display() {
+    this.drawBackground();
+    this.drawGameEntities();
+    this.displayHUD();
+    this.displayTouchControls();
+    
+    if (this.gameOver) {
+      this.displayGameOver();
+    }
+  }
+
+  drawBackground() {
     push();
     
     // Clear background
@@ -316,6 +376,12 @@ class Game {
       ellipse(star.x, star.y, star.size, star.size);
     }
     
+    pop();
+  }
+
+  drawGameEntities() {
+    push();
+    
     // Draw planets (behind UFOs)
     for (const planet of this.planets) {
       planet.display();
@@ -326,7 +392,22 @@ class Game {
       ufo.display();
     }
     
-    // Draw player if it exists and has display method
+    this.drawPlayer();
+    
+    // Draw enemies
+    for (const enemy of this.enemies) {
+      enemy.display();
+    }
+    
+    // Draw bullets
+    for (const bullet of this.bullets) {
+      bullet.display();
+    }
+    
+    pop();
+  }
+
+  drawPlayer() {
     if (this.player) {
       try {
         // Ensure player is within bounds before displaying
@@ -348,29 +429,6 @@ class Game {
       } catch (e) {
         console.error("Error displaying player:", e);
       }
-    }
-    
-    // Draw enemies
-    for (const enemy of this.enemies) {
-      enemy.display();
-    }
-    
-    // Draw bullets
-    for (const bullet of this.bullets) {
-      bullet.display();
-    }
-    
-    // Display score and level
-    this.displayHUD();
-    
-    // Display touch controls if active
-    this.displayTouchControls();
-    
-    pop();
-    
-    // Display game over screen if game is over
-    if (this.gameOver) {
-      this.displayGameOver();
     }
   }
   
@@ -473,124 +531,132 @@ class Game {
     const isHighScore = this.isHighScore();
     
     if (this.enteringName && !this.nameSubmitted) {
-      // Name entry
-      fill(255);
-      textSize(24);
-      textAlign(CENTER);
-      text("NEW HIGH SCORE!", panelX, panelY - 50);
-      text("ENTER YOUR NAME:", panelX, panelY);
-      
-      // Name input field
-      fill(0);
-      stroke(0, 255, 0);
-      strokeWeight(2);
-      rect(panelX, panelY + 50, 300, 50, 5);
-      
-      // Entered name
-      fill(0, 255, 0);
-      textSize(24);
-      textAlign(CENTER);
-      text(this.playerName + (frameCount % 60 < 30 ? "_" : ""), panelX, panelY + 58);
-      
-      // Submit button
-      const buttonY = panelY + 100;
-      const buttonHover = mouseY > buttonY - 20 && mouseY < buttonY + 20 && 
-                          mouseX > panelX - 100 && mouseX < panelX + 100;
-      
-      // Fixed button colors
-      if (buttonHover) {
-        fill(0, 200, 0); // Bright green when hovering
-      } else {
-        fill(0, 100, 0); // Darker green when not hovering
-      }
-      
-      stroke(0, 255, 0);
-      strokeWeight(2);
-      rect(panelX, buttonY, 200, 40, 5);
-      
-      // Button text
-      fill(255);
-      textSize(18);
-      text("SUBMIT", panelX, buttonY + 6);
-      
-      // Instructions
-      fill(200);
-      textSize(14);
-      text("PRESS ENTER OR CLICK SUBMIT", panelX, panelY + 140);
-      
-      console.log("Displaying name entry. Current name:", this.playerName);
+      this.displayNameEntryUI(panelX, panelY);
     } else if (isHighScore && !this.justEnded && !this.showingScoreboard && !this.nameSubmitted) {
       // Prompt to enter name
       this.enteringName = true;
       console.log("Prompting for name entry");
     } else {
-      // Display high scores
-      fill(0, 255, 0);
-      textSize(24);
-      textAlign(CENTER);
-      text("TOP SCORES", panelX, panelY - 50);
-      
-      // High scores list - only top 3
-      textSize(20);
-      for (let i = 0; i < Math.min(this.highScores.length, 3); i++) {
-        const score = this.highScores[i];
-        const yPos = panelY + i * 40;
-        
-        // Highlight the player's new score
-        if (this.justEnded && score.name === this.playerName && score.score === this.score) {
-          fill(255, 255, 0); // Bright yellow highlight for the player's score
-          
-          // Add a pulsing effect to make it more noticeable
-          const pulseAmount = sin(frameCount * 0.1) * 0.5 + 0.5;
-          stroke(255, 255 * pulseAmount, 0);
-          strokeWeight(2);
-        } else {
-          fill(0, 150, 255);
-          noStroke();
-        }
-        
-        textAlign(LEFT);
-        
-        // Draw trophy or medal emoji for top 3 positions
-        if (i === 0) {
-          // Trophy for 1st place
-          textSize(24);
-          text("🏆", panelX - 130, yPos);
-          textSize(20);
-        } else if (i === 1) {
-          // Silver medal for 2nd place
-          textSize(24);
-          text("🥈", panelX - 130, yPos);
-          textSize(20);
-        } else if (i === 2) {
-          // Bronze medal for 3rd place
-          textSize(24);
-          text("🥉", panelX - 130, yPos);
-          textSize(20);
-        }
-        
-        text(score.name, panelX - 80, yPos);
-        
-        textAlign(RIGHT);
-        text(score.score.toString().padStart(6, '0'), panelX + 120, yPos);
-      }
-      
-      // Restart and menu instructions in a box
-      fill(0, 0, 30);
-      stroke(0, 100, 255);
-      strokeWeight(2);
-      rectMode(CENTER);
-      rect(panelX, panelY + 150, 300, 80, 10);
-      
-      // Restart instructions
-      fill(255);
-      textSize(20);
-      textAlign(CENTER);
-      text("PRESS 'R' TO RESTART", panelX, panelY + 130);
-      text("PRESS 'ESC' FOR MENU", panelX, panelY + 160);
+      this.displayHighScores(panelX, panelY);
     }
     
     pop();
+  }
+
+  displayNameEntryUI(panelX, panelY) {
+    // Name entry
+    fill(255);
+    textSize(24);
+    textAlign(CENTER);
+    text("NEW HIGH SCORE!", panelX, panelY - 50);
+    text("ENTER YOUR NAME:", panelX, panelY);
+    
+    // Name input field
+    fill(0);
+    stroke(0, 255, 0);
+    strokeWeight(2);
+    rect(panelX, panelY + 50, 300, 50, 5);
+    
+    // Entered name
+    fill(0, 255, 0);
+    textSize(24);
+    textAlign(CENTER);
+    text(this.playerName + (frameCount % 60 < 30 ? "_" : ""), panelX, panelY + 58);
+    
+    // Submit button
+    const buttonY = panelY + 100;
+    const buttonHover = mouseY > buttonY - 20 && mouseY < buttonY + 20 && 
+                        mouseX > panelX - 100 && mouseX < panelX + 100;
+    
+    // Fixed button colors
+    if (buttonHover) {
+      fill(0, 200, 0); // Bright green when hovering
+    } else {
+      fill(0, 100, 0); // Darker green when not hovering
+    }
+    
+    stroke(0, 255, 0);
+    strokeWeight(2);
+    rect(panelX, buttonY, 200, 40, 5);
+    
+    // Button text
+    fill(255);
+    textSize(18);
+    text("SUBMIT", panelX, buttonY + 6);
+    
+    // Instructions
+    fill(200);
+    textSize(14);
+    text("PRESS ENTER OR CLICK SUBMIT", panelX, panelY + 140);
+    
+    console.log("Displaying name entry. Current name:", this.playerName);
+  }
+
+  displayHighScores(panelX, panelY) {
+    // Display high scores
+    fill(0, 255, 0);
+    textSize(24);
+    textAlign(CENTER);
+    text("TOP SCORES", panelX, panelY - 50);
+    
+    // High scores list - only top 3
+    textSize(20);
+    for (let i = 0; i < Math.min(this.highScores.length, 3); i++) {
+      const score = this.highScores[i];
+      const yPos = panelY + i * 40;
+      
+      // Highlight the player's new score
+      if (this.justEnded && score.name === this.playerName && score.score === this.score) {
+        fill(255, 255, 0); // Bright yellow highlight for the player's score
+        
+        // Add a pulsing effect to make it more noticeable
+        const pulseAmount = sin(frameCount * 0.1) * 0.5 + 0.5;
+        stroke(255, 255 * pulseAmount, 0);
+        strokeWeight(2);
+      } else {
+        fill(0, 150, 255);
+        noStroke();
+      }
+      
+      textAlign(LEFT);
+      
+      // Draw trophy or medal emoji for top 3 positions
+      if (i === 0) {
+        // Trophy for 1st place
+        textSize(24);
+        text("🏆", panelX - 130, yPos);
+        textSize(20);
+      } else if (i === 1) {
+        // Silver medal for 2nd place
+        textSize(24);
+        text("🥈", panelX - 130, yPos);
+        textSize(20);
+      } else if (i === 2) {
+        // Bronze medal for 3rd place
+        textSize(24);
+        text("🥉", panelX - 130, yPos);
+        textSize(20);
+      }
+      
+      text(score.name, panelX - 80, yPos);
+      
+      textAlign(RIGHT);
+      text(score.score.toString().padStart(6, '0'), panelX + 120, yPos);
+    }
+    
+    // Restart and menu instructions in a box
+    fill(0, 0, 30);
+    stroke(0, 100, 255);
+    strokeWeight(2);
+    rectMode(CENTER);
+    rect(panelX, panelY + 150, 300, 80, 10);
+    
+    // Restart instructions
+    fill(255);
+    textSize(20);
+    textAlign(CENTER);
+    text("PRESS 'R' TO RESTART", panelX, panelY + 130);
+    text("PRESS 'ESC' FOR MENU", panelX, panelY + 160);
   }
   
   /**
@@ -809,30 +875,7 @@ class Game {
     this.touchY = y;
     
     if (this.joystickActive) {
-      // Update joystick position
-      this.joystickX = x;
-      this.joystickY = y;
-      
-      // Calculate joystick displacement
-      let dx = this.joystickX - this.joystickBaseX;
-      let dy = this.joystickY - this.joystickBaseY;
-      
-      // Limit to joystick radius
-      const distance = sqrt(dx * dx + dy * dy);
-      if (distance > this.virtualJoystickRadius) {
-        dx = dx * this.virtualJoystickRadius / distance;
-        dy = dy * this.virtualJoystickRadius / distance;
-        this.joystickX = this.joystickBaseX + dx;
-        this.joystickY = this.joystickBaseY + dy;
-      }
-      
-      // Move player based on joystick position
-      const moveSpeed = 5;
-      const moveX = map(dx, -this.virtualJoystickRadius, this.virtualJoystickRadius, -moveSpeed, moveSpeed);
-      const moveY = map(dy, -this.virtualJoystickRadius, this.virtualJoystickRadius, -moveSpeed, moveSpeed);
-      
-      this.player.x = constrain(this.player.x + moveX, 20, width - 20);
-      this.player.y = constrain(this.player.y + moveY, 20, height - 20);
+      this.handleJoystickMovement(x, y);
     } else if (x > width / 2) {
       // Right side - continuous fire
       const currentTime = millis();
@@ -841,6 +884,33 @@ class Game {
         this.lastTouchTime = currentTime;
       }
     }
+  }
+
+  handleJoystickMovement(x, y) {
+    // Update joystick position
+    this.joystickX = x;
+    this.joystickY = y;
+    
+    // Calculate joystick displacement
+    let dx = this.joystickX - this.joystickBaseX;
+    let dy = this.joystickY - this.joystickBaseY;
+    
+    // Limit to joystick radius
+    const distance = sqrt(dx * dx + dy * dy);
+    if (distance > this.virtualJoystickRadius) {
+      dx = dx * this.virtualJoystickRadius / distance;
+      dy = dy * this.virtualJoystickRadius / distance;
+      this.joystickX = this.joystickBaseX + dx;
+      this.joystickY = this.joystickBaseY + dy;
+    }
+    
+    // Move player based on joystick position
+    const moveSpeed = 5;
+    const moveX = map(dx, -this.virtualJoystickRadius, this.virtualJoystickRadius, -moveSpeed, moveSpeed);
+    const moveY = map(dy, -this.virtualJoystickRadius, this.virtualJoystickRadius, -moveSpeed, moveSpeed);
+    
+    this.player.x = constrain(this.player.x + moveX, 20, width - 20);
+    this.player.y = constrain(this.player.y + moveY, 20, height - 20);
   }
   
   /**
@@ -1432,4 +1502,7 @@ class Game {
 }
 
 // Global game instance
-let gameInstance; 
+let gameInstance;
+
+// Make Game available globally
+window.Game = Game; 
