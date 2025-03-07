@@ -256,8 +256,8 @@ class StartScreen {
     this.drawPanelTitle(x, y - 140, "CONTROLS");
     
     // Calculate spacing for controls sections
-    const sectionSpacing = 70;
-    const startY = y - 80;
+    const sectionSpacing = 120;
+    const startY = y - 100;
     
     // Draw movement controls
     this.drawMovementControls(x, startY);
@@ -266,10 +266,10 @@ class StartScreen {
     this.drawFireControls(x, startY + sectionSpacing);
     
     // Draw restart controls
-    this.drawRestartControls(x, startY + sectionSpacing * 2);
+    this.drawRestartControls(x, startY + sectionSpacing * 1.6);
     
     // Draw menu controls
-    this.drawMenuControls(x, startY + sectionSpacing * 3);
+    this.drawMenuControls(x, startY + sectionSpacing * 2.2);
   }
   
   /**
